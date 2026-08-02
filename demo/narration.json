@@ -1,0 +1,13 @@
+{
+  "language": "en-US",
+  "scenes": [
+    { "id": 1, "title": "The problem", "text": "When something breaks at home, finding the right professional can be slow, uncertain, and difficult to trust." },
+    { "id": 2, "title": "Start with evidence", "disclosure": "PROTOTYPE FLOW", "text": "Fiakto starts with what the customer already has: a photo, a short description, and an approximate location." },
+    { "id": 3, "title": "Gemini assists triage", "disclosure": "PROTOTYPE FLOW", "text": "Gemini analyzes the available evidence, structures the request, asks focused follow-up questions, and highlights possible safety risks without pretending to diagnose with certainty." },
+    { "id": 4, "title": "Relevant local work", "disclosure": "PLANNED WORKFLOW", "text": "The result becomes a clearer opportunity for verified local professionals with the relevant trade and coverage area." },
+    { "id": 5, "title": "Private by design", "disclosure": "PLANNED WORKFLOW", "text": "Professionals submit private quotes. They never see competitors’ prices, and the customer’s exact address stays protected until acceptance and payment." },
+    { "id": 6, "title": "Accountability", "disclosure": "PLANNED WORKFLOW", "text": "Fiakto keeps consequential actions auditable. Gemini helps organize information, but deterministic rules and people remain responsible for identity, authorization, and money." },
+    { "id": 7, "title": "Built for the pilot", "disclosure": "PLANNED WORKFLOW", "text": "Our first pilot is designed for CABA and Greater Buenos Aires, with a nationwide architecture and a simple goal: turn real household problems into trusted, accountable work." },
+    { "id": 8, "title": "The promise", "text": "Fiakto. Todo tiene solución." }
+  ]
+}

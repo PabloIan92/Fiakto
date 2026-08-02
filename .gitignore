@@ -10,3 +10,11 @@ test-results/
 .superpowers/
 *.log
 tsconfig.tsbuildinfo
+demo/output/audio/
+demo/output/frames/
+demo/output/segments/
+demo/output/timing.json
+demo/output/subtitles.srt
+demo/output/ambient.wav
+demo/output/concat.txt
+demo/output/video-only.mp4
