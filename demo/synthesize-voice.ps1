@@ -10,7 +10,7 @@ $voice = New-Object System.Speech.Synthesis.SpeechSynthesizer
 $englishVoice = $voice.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like 'en-*' } | Select-Object -First 1
 if (-not $englishVoice) { throw 'No installed English System.Speech voice is available.' }
 $voice.SelectVoice($englishVoice.VoiceInfo.Name)
-$voice.Rate = -1
+$voice.Rate = -8
 $voice.Volume = 100
 
 function Convert-ToSsml([string]$Text) {
@@ -27,8 +27,8 @@ foreach ($scene in $narration.scenes) {
   $voice.SpeakSsml((Convert-ToSsml $scene.text))
   $voice.SetOutputToNull()
   $duration = [Math]::Round(([System.IO.FileInfo]::new($wav).Length - 44) / 96000, 3)
-  $start = $cursor; $end = [Math]::Round($start + $duration + 5.0, 3)
-  $timing += [PSCustomObject]@{ id = $scene.id; start = $start; end = $end; narrationDuration = $duration; segmentDuration = [Math]::Round($duration + 5.0, 3); text = $scene.text }
+  $start = $cursor; $end = [Math]::Round($start + $duration + 0.6, 3)
+  $timing += [PSCustomObject]@{ id = $scene.id; start = $start; end = $end; narrationDuration = $duration; segmentDuration = [Math]::Round($duration + 0.6, 3); text = $scene.text }
   $cursor = $end
 }
 $voice.Dispose()
@@ -36,6 +36,3 @@ $timing | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 (Join-Path $outpu
 $cues = foreach ($entry in $timing) { "{0}`r`n{1} --> {2}`r`n{3}`r`n" -f $entry.id, (Format-SrtTime $entry.start), (Format-SrtTime $entry.end), $entry.text }
 [System.IO.File]::WriteAllText((Join-Path $outputDirectory 'subtitles.srt'), ($cues -join "`r`n"), [System.Text.UTF8Encoding]::new($false))
 Write-Output ("Synthesized {0} scenes with {1}. Total timed duration: {2:N2} seconds." -f $timing.Count, $englishVoice.VoiceInfo.Name, $cursor)
-
-
-

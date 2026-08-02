@@ -15,7 +15,7 @@ $concat = @()
 foreach ($entry in $timing) {
   $segment = Join-Path $segmentsDirectory ("scene-{0}.mp4" -f $entry.id)
   $fadeOutStart = [Math]::Max(0, $entry.segmentDuration - 0.35)
-  ffmpeg -y -loop 1 -framerate 30 -i (Join-Path $framesDirectory ("scene-{0}.png" -f $entry.id)) -i (Join-Path $audioDirectory ("scene-{0}.wav" -f $entry.id)) -filter:v "fade=t=in:st=0:d=0.35,fade=t=out:st=$fadeOutStart`:d=0.35,format=yuv420p" -c:v libx264 -crf 20 -preset medium -t $entry.segmentDuration -af apad=pad_dur=5 -c:a aac -b:a 192k -ar 48000 $segment
+  ffmpeg -y -loop 1 -framerate 30 -i (Join-Path $framesDirectory ("scene-{0}.png" -f $entry.id)) -i (Join-Path $audioDirectory ("scene-{0}.wav" -f $entry.id)) -filter:v "fade=t=in:st=0:d=0.35,fade=t=out:st=$fadeOutStart`:d=0.35,format=yuv420p" -c:v libx264 -crf 20 -preset medium -t $entry.segmentDuration -af apad=pad_dur=0.6 -c:a aac -b:a 192k -ar 48000 $segment
   if ($LASTEXITCODE -ne 0) { throw "FFmpeg failed rendering scene $($entry.id)." }
   $concat += "file '$($segment.Replace('\','/'))'"
 }
