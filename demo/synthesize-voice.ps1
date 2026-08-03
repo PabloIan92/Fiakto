@@ -10,7 +10,7 @@ $voice = New-Object System.Speech.Synthesis.SpeechSynthesizer
 $englishVoice = $voice.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like 'en-*' } | Select-Object -First 1
 if (-not $englishVoice) { throw 'No installed English System.Speech voice is available.' }
 $voice.SelectVoice($englishVoice.VoiceInfo.Name)
-$voice.Rate = -8
+$voice.Rate = -1
 $voice.Volume = 100
 
 function Convert-ToSsml([string]$Text) {

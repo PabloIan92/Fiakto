@@ -14,8 +14,8 @@ Produce an English-language MP4 suitable for YouTube and the Devpost submission.
 
 ## Story Structure
 
-1. **Problem:** Hiring a trustworthy local professional is stressful and opaque.
-2. **Input:** A customer shows a home problem with a photo and short description.
+1. **Origin story:** A late-night household leak forces a customer through fragmented recommendations, repeated explanations, and incomparable estimates while a suitable local professional may be nearby; the story makes the safety, urgency, context, and accountable-work gap concrete.
+2. **Better starting point:** Customers bring a photo, a short description, and an approximate location instead of diagnosing the issue themselves.
 3. **Gemini:** Multimodal analysis structures the request, asks follow-up questions, and flags safety risks.
 4. **Trusted workflow:** Verified professionals receive matched opportunities and submit private quotes.
 5. **Safety and accountability:** Addresses remain protected; Gemini assists but never moves money; consequential actions remain auditable and human-controlled.
@@ -27,7 +27,7 @@ Use the real Fiakto landing page where available. Represent the incomplete reque
 
 ## Narration
 
-The voice-over should be confident and plain-spoken, avoiding unsupported metrics and absolute claims. Gemini is described as assisting triage and organization, not diagnosing with certainty. The payment flow is described as planned and regulated, not as escrow already implemented.
+The voice-over should open with the approved Fiakto origin story, then remain confident and plain-spoken, avoiding unsupported metrics and absolute claims. Gemini is described as assisting triage and organization, not diagnosing with certainty. The payment flow is described as planned and regulated, not as escrow already implemented.
 
 ## Deliverables and Validation
 
