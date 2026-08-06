@@ -8,8 +8,9 @@ Fiakto es un marketplace argentino para contratar profesionales verificados. Los
 
 El repositorio contiene una vertical funcional en desarrollo. La base técnica, los contratos de dominio, la persistencia, el triage y el alta de solicitudes están implementados y cubiertos por pruebas.
 
-### Completado
+### ✅ Completado
 
+**Core (antes):**
 - [x] Shell responsive con Next.js App Router y TypeScript.
 - [x] Contratos Zod para solicitudes, triage y presupuestos.
 - [x] Persistencia con Firebase Admin y reglas de Firestore cerradas por defecto.
@@ -21,14 +22,24 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 - [x] Formulario móvil accesible sin solicitar el domicilio exacto.
 - [x] Demo y evidencia para la presentación en Devpost.
 
+**Nuevo en esta versión (PWA + Mapa):**
+- [x] **PWA instalable** (Android Chrome + iPhone Safari): `next-pwa` + Workbox, service worker con estrategias de cache, `manifest.webmanifest`, iconos 72→512px, meta tags iOS/Android.
+- [x] **Selector de ubicación en mapa (cliente)**: `MapPicker` con Leaflet + OpenStreetMap, marcador arrastrable, círculo de radio configurable (1–10 km), validación obligatoria antes de enviar.
+- [x] **Vista aproximada (profesional)**: `ApproximateMap` solo lectura, zona borrosa (círculo punteado) sin revelar dirección exacta.
+- [x] **Dominio extendido**: `LocationSchema` con `lat`, `lng`, `displayRadiusKm`, `province`, `locality`, `exactAddress` (condicional, solo tras aceptación + pago).
+- [x] **UI formulario**: selector de provincia, localidad, radio de visibilidad; integración con subida de medios existente y flujo de triage automático.
+
 ## Próximas tareas
 
 ### Prioridad alta — completar la vertical
 
-- [ ] Subir fotos, videos y audios a Cloud Storage antes de crear la solicitud. La pantalla ya valida tipo, tamaño y cantidad, pero todavía envía `media: []`.
+- [ ] Subir fotos, videos y audios a Cloud Storage antes de crear la solicitud. La pantalla ya valida tipo, tamaño y cantidad, pero todavía envía `media: []` (parcial: infraestructura de URLs firmadas existe en `/api/requests/media`).
+- [ ] **Revelación condicional de dirección exacta**: endpoint/API que devuelve `exactAddress` solo si `status === "accepted" && paymentConfirmed`.
+- [ ] **Filtrado por proximidad**: query Firestore geo (geohash / `geofirestore`) para oportunidades cercanas al profesional.
 - [ ] Crear oportunidades filtradas por oficio, cobertura e identidad verificada.
 - [ ] Implementar presupuestos privados con protección contra duplicados.
 - [ ] Mostrar al cliente sus presupuestos sin filtrar datos de competidores.
+- [ ] **SLA / Ventana de reparación**: estados `in_progress` / `completed`, `slaDeadline`, alertas de vencimiento, tracking `workStartedAt` / `workCompletedAt`.
 - [ ] Agregar pruebas Playwright para el recorrido solicitud → triage → presupuesto.
 - [ ] Configurar Firebase Emulator Suite para desarrollo local reproducible.
 
@@ -38,7 +49,7 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 - [ ] Añadir `apphosting.yaml` y configurar Firebase App Hosting.
 - [ ] Guardar `GEMINI_API_KEY` en Secret Manager.
 - [ ] Configurar Firebase Authentication, Firestore y Cloud Storage.
-- [ ] Ejecutar `npm run build` y publicar una URL de staging.
+- [ ] Ejecutar `npm run build` (con `--webpack` flag por compatibilidad next-pwa) y publicar URL de staging.
 - [ ] Verificar que los logs no incluyan tokens, documentos ni domicilios.
 
 ### Después del MVP
@@ -48,7 +59,7 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 - [ ] Implementar aceptación del presupuesto, chat, evidencia y órdenes de cambio.
 - [ ] Añadir doble confirmación de finalización y resolución administrativa de disputas.
 - [ ] Incorporar calificaciones bilaterales, suscripción Premium y analítica.
-- [ ] Evaluar una aplicación Android y Google Play Console después de validar la web responsive.
+- [ ] Evaluar aplicación nativa Android/iOS después de validar la web responsive (PWA cubre instalación y offline básico).
 
 ## Desarrollo local
 
@@ -63,6 +74,11 @@ Abrí `http://localhost:3000`. El formulario de cliente está en `/cliente/solic
 
 Para usar Firebase y Gemini en un entorno real se necesitan credenciales de servidor. Nunca uses el prefijo `NEXT_PUBLIC_` para `GEMINI_API_KEY` ni para credenciales administrativas.
 
+**Build producción:**
+```bash
+npm run build        # usa --webpack flag internamente (next.config.ts)
+```
+
 ## Verificación
 
 ```bash
@@ -76,11 +92,22 @@ npm run build
 
 ```text
 app/                 Rutas, páginas y endpoints de Next.js
-src/domain/          Esquemas y reglas de negocio
-src/server/          Firebase, autenticación, auditoría y Gemini
+  api/               Endpoints (requests, triage, media)
+  cliente/           Páginas cliente (nueva solicitud, mis solicitudes)
+  components/        MapPicker, ApproximateMap
+  (public)/          Páginas públicas
+src/
+  domain/            Esquemas Zod (requests, triage, quotes, location)
+  server/            Firebase, auth, auditoría, Gemini, repositorios, media, triage-service
 tests/               Pruebas unitarias, de rutas y de interfaz
 demo/                Material reproducible para la demo
 docs/                Diseño, planes y documentación operativa
+public/
+  icons/             Iconos PWA 72→512px (generados desde SVG)
+  manifest.webmanifest
+  sw.js              Service worker Workbox (precache + runtime caching)
+scripts/             gen-icons.mjs (genera iconos desde SVG)
+types/               Declaraciones TypeScript (next-pwa, minimatch)
 ```
 
 Las direcciones exactas permanecen ocultas hasta la contratación. Los profesionales no ven precios de competidores. Gemini asiste y deja trazabilidad, pero no mueve dinero ni toma decisiones finales por las personas.
