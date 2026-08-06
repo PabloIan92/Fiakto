@@ -20,7 +20,7 @@ type Dependencies = {
   appendAudit(event: AuditEvent): Promise<unknown>;
 };
 
-export function createTriagePostHandler(dependencies: Dependencies) {
+function createTriagePostHandler(dependencies: Dependencies) {
   return async function POST(request: Request, context: Context) {
     const actor = await dependencies.authenticate(request);
     if (!actor || actor.role !== "customer") {

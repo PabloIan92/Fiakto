@@ -13,7 +13,7 @@ type Dependencies = {
   appendAudit(event: AuditEvent): Promise<unknown>;
 };
 
-export function createRequestsPostHandler(dependencies: Dependencies) {
+function createRequestsPostHandler(dependencies: Dependencies) {
   return async function POST(request: Request) {
     const actor = await dependencies.authenticate(request);
     if (!actor || actor.role !== "customer") {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { type ChangeEvent, type FormEvent, useState } from "react";
+import { MapPicker } from "@/app/components/MapPicker";
 
 const ACCEPTED_TYPES = [
   "image/jpeg",
@@ -17,6 +18,10 @@ export default function NewRequestPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [province, setProvince] = useState("Buenos Aires");
+  const [locality, setLocality] = useState("");
+  const [radiusKm, setRadiusKm] = useState(3);
 
   function handleFiles(event: ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(event.target.files ?? []);
@@ -39,6 +44,14 @@ export default function NewRequestPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!location) {
+      setFileError("Seleccioná tu ubicación en el mapa.");
+      return;
+    }
+    if (!locality.trim()) {
+      setFileError("Ingresá tu localidad.");
+      return;
+    }
     setStatus("sending");
     const form = new FormData(event.currentTarget);
     const response = await fetch("/api/requests", {
@@ -46,8 +59,13 @@ export default function NewRequestPage() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         description: form.get("description"),
-        province: form.get("province"),
-        locality: form.get("locality"),
+        location: {
+          lat: location.lat,
+          lng: location.lng,
+          displayRadiusKm: radiusKm,
+          province,
+          locality,
+        },
         media: [],
       }),
     });
@@ -99,22 +117,70 @@ export default function NewRequestPage() {
               <span className="mt-2 block text-xs text-[#777166]">Incluí desde cuándo ocurre y qué intentaste hacer.</span>
             </label>
 
-            <div className="grid gap-5 sm:grid-cols-2">
-              <label htmlFor="province" className="block">
-                <span className="mb-2 block text-sm font-bold">Provincia</span>
-                <select id="province" aria-label="Provincia" name="province" defaultValue="Buenos Aires" className="h-12 w-full border border-[#181713]/30 bg-[#fffdf8] px-3 outline-none focus:border-[#dc4b2f]">
-                  <option>Ciudad Autónoma de Buenos Aires</option>
-                  <option>Buenos Aires</option>
-                  <option>Córdoba</option>
-                  <option>Santa Fe</option>
-                  <option>Otra provincia</option>
-                </select>
-              </label>
-              <label htmlFor="locality" className="block">
-                <span className="mb-2 block text-sm font-bold">Localidad</span>
-                <input id="locality" aria-label="Localidad" name="locality" required minLength={2} placeholder="Ej: Lanús" className="h-12 w-full border border-[#181713]/30 bg-transparent px-4 outline-none focus:border-[#dc4b2f]" />
-              </label>
-            </div>
+            <label htmlFor="location" className="block">
+              <span className="mb-2 block text-sm font-bold">¿Dónde es el trabajo?</span>
+              <MapPicker
+                value={location}
+                onChange={setLocation}
+                radiusKm={radiusKm}
+              />
+              <div className="mt-3 grid gap-4 sm:grid-cols-3">
+                <div className="sm:col-span-2">
+                  <label htmlFor="locality" className="block">
+                    <span className="mb-2 block text-sm font-bold">Localidad</span>
+                    <input
+                      id="locality"
+                      aria-label="Localidad"
+                      value={locality}
+                      onChange={(e) => setLocality(e.target.value)}
+                      required
+                      minLength={2}
+                      placeholder="Ej: Lanús"
+                      className="h-12 w-full border border-[#181713]/30 bg-transparent px-4 outline-none focus:border-[#dc4b2f]"
+                    />
+                  </label>
+                </div>
+                <div>
+                  <label htmlFor="radius" className="block">
+                    <span className="mb-2 block text-sm font-bold">Radio de visibilidad</span>
+                    <select
+                      id="radius"
+                      value={radiusKm}
+                      onChange={(e) => setRadiusKm(Number(e.target.value))}
+                      className="h-12 w-full border border-[#181713]/30 bg-[#fffdf8] px-3 outline-none focus:border-[#dc4b2f]"
+                    >
+                      <option value={1}>1 km (muy preciso)</option>
+                      <option value={2}>2 km</option>
+                      <option value={3} selected>3 km (recomendado)</option>
+                      <option value={5}>5 km</option>
+                      <option value={10}>10 km (amplio)</option>
+                    </select>
+                    <span className="mt-1 block text-xs text-[#777166]">
+                      Los profesionales verán una zona aproximada, no tu dirección exacta.
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="province" className="block">
+                    <span className="mb-2 block text-sm font-bold">Provincia</span>
+                    <select
+                      id="province"
+                      value={province}
+                      onChange={(e) => setProvince(e.target.value)}
+                      className="h-12 w-full border border-[#181713]/30 bg-[#fffdf8] px-3 outline-none focus:border-[#dc4b2f]"
+                    >
+                      <option>Ciudad Autónoma de Buenos Aires</option>
+                      <option>Buenos Aires</option>
+                      <option>Córdoba</option>
+                      <option>Santa Fe</option>
+                      <option>Otra provincia</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            </label>
 
             <label htmlFor="media" className="block border border-dashed border-[#181713]/35 bg-[#f3efe6]/60 p-5">
               <span className="block text-sm font-bold">Fotos, video o audio (opcional)</span>
@@ -136,7 +202,7 @@ export default function NewRequestPage() {
           <div className="mt-8 border-t border-[#181713]/15 pt-6">
             <button
               type="submit"
-              disabled={status === "sending" || Boolean(fileError)}
+              disabled={status === "sending" || Boolean(fileError) || !location}
               className="w-full bg-[#dc4b2f] px-6 py-4 text-base font-black text-white transition hover:bg-[#bd351f] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {status === "sending" ? "Analizando…" : "Analizar solicitud"}
