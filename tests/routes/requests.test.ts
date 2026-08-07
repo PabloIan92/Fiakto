@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ServiceRequest } from "@/src/domain/requests";
-import { createRequestsPostHandler } from "@/app/api/requests/route";
+import { createRequestsPostHandler } from "@/app/api/requests/handler";
 
 function request(body: Record<string, unknown>) {
   return new Request("http://localhost/api/requests", {
@@ -13,8 +13,13 @@ function request(body: Record<string, unknown>) {
 
 const validBody = {
   description: "La canilla pierde agua debajo de la mesada de la cocina.",
-  province: "Buenos Aires",
-  locality: "Lanús",
+  location: {
+    lat: -34.6,
+    lng: -58.4,
+    displayRadiusKm: 3,
+    province: "Buenos Aires",
+    locality: "Lanús",
+  },
   media: [],
 };
 

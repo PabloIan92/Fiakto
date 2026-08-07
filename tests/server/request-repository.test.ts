@@ -26,8 +26,13 @@ class FakeRequestRepository implements RequestRepository {
 const baseRequest: ServiceRequest = {
   customerId: "customer-1",
   description: "La canilla pierde agua debajo de la mesada.",
-  province: "Buenos Aires",
-  locality: "Lanús",
+  location: {
+    lat: -34.6,
+    lng: -58.4,
+    displayRadiusKm: 3,
+    province: "Buenos Aires",
+    locality: "Lanús",
+  },
   media: [],
   status: "draft",
 };

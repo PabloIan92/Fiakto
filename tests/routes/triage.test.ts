@@ -2,13 +2,18 @@ import { describe, expect, it } from "vitest";
 
 import type { ServiceRequest } from "@/src/domain/requests";
 import type { TriageResult } from "@/src/domain/triage";
-import { createTriagePostHandler } from "@/app/api/requests/[id]/triage/route";
+import { createTriagePostHandler } from "@/app/api/requests/[id]/triage/handler";
 
 const storedRequest: ServiceRequest = {
   customerId: "customer-1",
   description: "La canilla pierde agua debajo de la mesada.",
-  province: "Buenos Aires",
-  locality: "Lanús",
+  location: {
+    lat: -34.6,
+    lng: -58.4,
+    displayRadiusKm: 3,
+    province: "Buenos Aires",
+    locality: "Lanús",
+  },
   media: [{ storagePath: "requests/1/photo.jpg", mimeType: "image/jpeg" }],
   status: "triaging",
 };

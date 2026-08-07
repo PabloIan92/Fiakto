@@ -9,8 +9,8 @@ describe("Fiakto application shell", () => {
     expect(
       screen.getByText(
         "Publicá lo que necesitás y recibí presupuestos privados de profesionales verificados.",
-      ),
-    ).toHaveClass("dark:text-neutral-300");
+      ).className,
+    ).toContain("dark:text-neutral-300");
   });
 
   it("declares truthful Spanish application metadata", () => {

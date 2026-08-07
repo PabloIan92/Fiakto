@@ -9,10 +9,22 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    ".worktrees/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated PWA service worker output (next-pwa), not source:
+    "public/sw.js",
+    "public/workbox-*.js",
+    "public/fallback-*.js",
   ]),
+  {
+    // CommonJS build scripts intentionally use require().
+    files: ["scripts/**/*.cjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

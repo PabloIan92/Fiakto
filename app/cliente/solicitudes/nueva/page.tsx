@@ -147,18 +147,19 @@ export default function NewRequestPage() {
                       id="radius"
                       value={radiusKm}
                       onChange={(e) => setRadiusKm(Number(e.target.value))}
+                      aria-describedby="radius-hint"
                       className="h-12 w-full border border-[#181713]/30 bg-[#fffdf8] px-3 outline-none focus:border-[#dc4b2f]"
                     >
                       <option value={1}>1 km (muy preciso)</option>
                       <option value={2}>2 km</option>
-                      <option value={3} selected>3 km (recomendado)</option>
+                      <option value={3}>3 km (recomendado)</option>
                       <option value={5}>5 km</option>
                       <option value={10}>10 km (amplio)</option>
                     </select>
-                    <span className="mt-1 block text-xs text-[#777166]">
-                      Los profesionales verán una zona aproximada, no tu dirección exacta.
-                    </span>
                   </label>
+                  <span id="radius-hint" className="mt-1 block text-xs text-[#777166]">
+                    Los profesionales verán una zona aproximada, no tu dirección exacta.
+                  </span>
                 </div>
               </div>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">

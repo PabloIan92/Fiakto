@@ -42,6 +42,35 @@ export function MapPicker({
   const circleRef = useRef<L.Circle | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
+  const updateMarker = (lat: number, lng: number) => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (markerRef.current) {
+      markerRef.current.setLatLng([lat, lng]);
+    } else {
+      markerRef.current = L.marker([lat, lng], { draggable: !readonly }).addTo(map);
+      markerRef.current.on("dragend", (e) => {
+        const { lat, lng } = e.target.getLatLng();
+        onChange({ lat, lng });
+      });
+    }
+
+    if (circleRef.current) {
+      circleRef.current.setLatLng([lat, lng]);
+      circleRef.current.setRadius(radiusKm * 1000);
+    } else {
+      circleRef.current = L.circle([lat, lng], {
+        radius: radiusKm * 1000,
+        color: "#dc4b2f",
+        fillColor: "#dc4b2f",
+        fillOpacity: 0.15,
+        weight: 2,
+        dashArray: "8, 8",
+      }).addTo(map);
+    }
+  };
+
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
@@ -78,35 +107,6 @@ export function MapPicker({
       mapInstanceRef.current = null;
     };
   }, [readonly]);
-
-  const updateMarker = (lat: number, lng: number) => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-
-    if (markerRef.current) {
-      markerRef.current.setLatLng([lat, lng]);
-    } else {
-      markerRef.current = L.marker([lat, lng], { draggable: !readonly }).addTo(map);
-      markerRef.current.on("dragend", (e) => {
-        const { lat, lng } = e.target.getLatLng();
-        onChange({ lat, lng });
-      });
-    }
-
-    if (circleRef.current) {
-      circleRef.current.setLatLng([lat, lng]);
-      circleRef.current.setRadius(radiusKm * 1000);
-    } else {
-      circleRef.current = L.circle([lat, lng], {
-        radius: radiusKm * 1000,
-        color: "#dc4b2f",
-        fillColor: "#dc4b2f",
-        fillOpacity: 0.15,
-        weight: 2,
-        dashArray: "8, 8",
-      }).addTo(map);
-    }
-  };
 
   useEffect(() => {
     if (value && mapInstanceRef.current) {
