@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { type ChangeEvent, type FormEvent, useState } from "react";
-import { MapPicker } from "@/app/components/MapPicker";
+
+// Leaflet toca `window` al importarse: solo puede correr en el cliente.
+const MapPicker = dynamic(
+  () => import("@/app/components/MapPicker").then((mod) => mod.MapPicker),
+  { ssr: false }
+);
 
 const ACCEPTED_TYPES = [
   "image/jpeg",

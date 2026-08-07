@@ -16,6 +16,15 @@ export interface FirestoreWriteClient {
   };
 }
 
+type QuerySnapshotDoc = { id: string; data(): DocumentData };
+export interface FirestoreReadClient {
+  collection(path: string): {
+    where(field: string, op: string, value: unknown): {
+      get(): Promise<{ docs: QuerySnapshotDoc[] }>;
+    };
+  };
+}
+
 export class FirestoreRequestRepository implements RequestRepository {
   constructor(private readonly firestore: FirestoreWriteClient = db) {}
 
@@ -34,5 +43,23 @@ export class FirestoreRequestRepository implements RequestRepository {
       status: "open",
       triagedAt: FieldValue.serverTimestamp(),
     });
+  }
+
+  async listByCustomer(customerId: string) {
+    const readClient = this.firestore as unknown as FirestoreReadClient;
+    const snapshot = await readClient
+      .collection("requests")
+      .where("customerId", "==", customerId)
+      .get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as ServiceRequest) }));
+  }
+
+  async listOpen() {
+    const readClient = this.firestore as unknown as FirestoreReadClient;
+    const snapshot = await readClient
+      .collection("requests")
+      .where("status", "==", "open")
+      .get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as ServiceRequest) }));
   }
 }

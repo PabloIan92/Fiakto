@@ -1,7 +1,12 @@
 import { ServiceRequestSchema } from "@/src/domain/requests";
 import type { Actor } from "@/src/server/auth";
 import { appendAuditEvent } from "@/src/server/audit";
-import type { RequestRepository } from "@/src/server/repositories/request-repository";
+import type {
+  RequestRepository,
+  ServiceRequestWithId,
+} from "@/src/server/repositories/request-repository";
+import type { ProfileRepository } from "@/src/server/repositories/profile-repository";
+import { canProfessionalViewRequest } from "@/src/domain/quotes";
 
 type AuditEvent = Parameters<typeof appendAuditEvent>[0];
 
@@ -10,6 +15,18 @@ export type Dependencies = {
   repository: RequestRepository;
   appendAudit(event: AuditEvent): Promise<unknown>;
 };
+
+export type GetDependencies = {
+  authenticate(request: Request): Promise<Actor | null>;
+  repository: Pick<RequestRepository, "listByCustomer" | "listOpen">;
+  profileRepository: ProfileRepository;
+};
+
+function withoutExactAddress(item: ServiceRequestWithId) {
+  const location = { ...item.location };
+  delete location.exactAddress;
+  return { ...item, location };
+}
 
 export function createRequestsPostHandler(dependencies: Dependencies) {
   return async function POST(request: Request) {
@@ -46,5 +63,46 @@ export function createRequestsPostHandler(dependencies: Dependencies) {
     });
 
     return Response.json({ id: created.id }, { status: 201 });
+  };
+}
+
+export function createRequestsGetHandler(dependencies: GetDependencies) {
+  return async function GET(request: Request) {
+    const actor = await dependencies.authenticate(request);
+    if (!actor) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (actor.role === "customer") {
+      const own = await dependencies.repository.listByCustomer(actor.id);
+      return Response.json({ requests: own });
+    }
+
+    if (actor.role === "professional") {
+      const profile = await dependencies.profileRepository.get(actor.id);
+      const open = await dependencies.repository.listOpen();
+      // Nota: TriageResult.trade (ver src/domain/triage.ts) usa un enum más
+      // acotado que TRADES (src/domain/profile.ts). El match puede fallar
+      // para oficios que todavía no existen en la clasificación del triage
+      // (ej. "cerrajeria"): queda como limitación conocida a resolver
+      // cuando se unifique el vocabulario de oficios.
+      const matching = open.filter((item) =>
+        canProfessionalViewRequest(
+          {
+            trade: item.triage?.trade ?? "",
+            province: item.location.province,
+            locality: item.location.locality,
+          },
+          {
+            verified: true,
+            trades: profile?.trades ?? [],
+            coverage: profile?.coverage ?? [],
+          },
+        ),
+      );
+      return Response.json({ requests: matching.map(withoutExactAddress) });
+    }
+
+    return Response.json({ requests: [] });
   };
 }

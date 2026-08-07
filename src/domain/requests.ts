@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { TriageResultSchema } from "@/src/domain/triage";
+
 export const MediaSchema = z.object({
   storagePath: z.string().min(1),
   mimeType: z.enum([
@@ -29,6 +31,7 @@ export const ServiceRequestSchema = z.object({
   status: z
     .enum(["draft", "triaging", "open", "quoted", "accepted", "closed"])
     .default("draft"),
+  triage: TriageResultSchema.optional(),
 });
 
 export type ServiceRequest = z.infer<typeof ServiceRequestSchema>;

@@ -39,6 +39,8 @@ function dependencies(actorId: string | null = "customer-1") {
           return { id: "request-1" };
         },
         saveTriage: async () => undefined,
+        listByCustomer: async () => [],
+        listOpen: async () => [],
       },
       appendAudit: async (event: Record<string, unknown>) => {
         audits.push(event);

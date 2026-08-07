@@ -21,6 +21,18 @@ class FakeRequestRepository implements RequestRepository {
     if (!stored) throw new Error("Request not found");
     this.requests.set(id, { ...stored, triage: result });
   }
+
+  async listByCustomer(customerId: string) {
+    return [...this.requests.entries()]
+      .filter(([, value]) => value.request.customerId === customerId)
+      .map(([id, value]) => ({ id, ...value.request }));
+  }
+
+  async listOpen() {
+    return [...this.requests.entries()]
+      .filter(([, value]) => value.request.status === "open")
+      .map(([id, value]) => ({ id, ...value.request }));
+  }
 }
 
 const baseRequest: ServiceRequest = {
