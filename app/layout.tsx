@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/app/providers/AuthProvider";
+import { ServiceWorkerCleanup } from "@/app/components/ServiceWorkerCleanup";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -68,6 +69,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-192x192.png" />
       </head>
       <body className="min-h-full flex flex-col">
+        <ServiceWorkerCleanup />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
