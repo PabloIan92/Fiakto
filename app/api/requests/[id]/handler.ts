@@ -38,7 +38,7 @@ export function createRequestGetHandler(dependencies: Dependencies) {
       // falta re-chequear oficio/cobertura: ya se validaron al iniciar el
       // trabajo y la solicitud puede haber salido de "open" desde entonces.
       if (found.professionalId !== actor.id) {
-        const profile = await dependencies.profileRepository.get(actor.id);
+        const profile = await dependencies.profileRepository.get(actor.id, "professional");
         const canView = canProfessionalViewRequest(
           {
             trade: found.triage?.trade ?? "",

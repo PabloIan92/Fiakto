@@ -5,7 +5,7 @@ export type DecodedToken = {
 
 export type Dependencies = {
   verifyIdToken(idToken: string): Promise<DecodedToken>;
-  ensureDefaultRole(uid: string, requestedRole?: "customer" | "professional"): Promise<void>;
+  setActiveRole(uid: string, role: "customer" | "professional"): Promise<void>;
 };
 
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 14; // 14 días: "recordar sesión"
@@ -36,14 +36,18 @@ export function createSessionPostHandler(dependencies: Dependencies) {
       return Response.json({ error: "Invalid token" }, { status: 401 });
     }
 
-    if (!decoded.role) {
-      // Primer login de este usuario: se asigna el rol elegido en el signup
-      // (o "customer" por defecto si no se mando ninguno, ej. logins viejos).
-      // El claim recién se ve reflejado en el próximo ID token, así que le
-      // avisamos al cliente que tiene que refrescarlo y reintentar antes de
-      // considerar la sesión lista.
-      await dependencies.ensureDefaultRole(decoded.uid, requestedRole);
+    // El rol se elige en cada login/alta, no es fijo por cuenta: si el rol
+    // pedido para esta sesión no coincide con el que trae el idToken
+    // (porque nunca se asignó, o porque la sesión anterior era del otro
+    // rol), hay que asignarlo y pedirle al cliente que refresque el token
+    // antes de armar la cookie de sesión.
+    if (requestedRole && decoded.role !== requestedRole) {
+      await dependencies.setActiveRole(decoded.uid, requestedRole);
       return Response.json({ needsRefresh: true });
+    }
+
+    if (!decoded.role) {
+      return Response.json({ error: "No role selected" }, { status: 400 });
     }
 
     const cookie = [

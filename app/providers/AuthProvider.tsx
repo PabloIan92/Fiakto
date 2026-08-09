@@ -6,7 +6,7 @@ import { onIdTokenChanged, type User } from "firebase/auth";
 
 import { auth } from "@/src/client/firebase-client";
 import { syncSession } from "@/src/client/session-sync";
-import { peekPendingSignupRole } from "@/src/client/pending-role";
+import { isManagedLogin } from "@/src/client/pending-role";
 
 type Role = "customer" | "professional" | "admin" | null;
 
@@ -50,8 +50,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (isManagedLogin()) {
+        // El formulario de login/signup esta manejando el sync de sesion
+        // explicitamente (eligio un rol para esta sesion). Si este listener
+        // tambien llamara a /api/session en paralelo, podria mandar un
+        // idToken viejo (cacheado antes del cambio de rol) y pisar el rol
+        // recien elegido. Solo actualiza el estado local mientras tanto.
+        setRole(await readRole(nextUser));
+        return;
+      }
+
       const token = await nextUser.getIdToken();
-      const { needsRefresh } = await syncSession(token, fetch, peekPendingSignupRole());
+      const { needsRefresh } = await syncSession(token);
       if (needsRefresh) {
         const freshToken = await nextUser.getIdToken(true);
         await syncSession(freshToken);
@@ -65,9 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Cliente y profesional son cuentas separadas: esta guarda evita que quien
-// entró con una pueda ver u operar las pantallas de la otra navegando por
-// URL directa. "admin" pasa cualquier guarda.
+// El rol se elige en cada login (misma cuenta puede entrar como cliente o
+// como profesional). Esta guarda evita que la sesión activa vea u opere
+// las pantallas del otro modo navegando por URL directa. "admin" pasa
+// cualquier guarda.
 export function useRoleGuard(requiredRole: "customer" | "professional", redirectTo: string) {
   const { user, role, loading } = useAuth();
   const router = useRouter();

@@ -1,18 +1,20 @@
-// El signup dispara dos llamadas a /api/session en paralelo: la explicita
-// del formulario de login y la reactiva de AuthProvider (onIdTokenChanged).
-// Cualquiera de las dos puede llegar primero al servidor, asi que ambas
-// leen el rol elegido desde esta variable compartida en vez de que una
-// dependa del timing de la otra.
-let pendingSignupRole: "customer" | "professional" | undefined;
+// El rol ahora se elige en CADA login (no es fijo por cuenta), asi que el
+// formulario de login/signup maneja explicitamente la sincronizacion de
+// sesion durante un login activo. Mientras un login esta "en curso"
+// (managedLogin=true), el listener automatico de AuthProvider
+// (onIdTokenChanged) NO llama a /api/session por su cuenta: si lo hiciera,
+// podria mandar un idToken viejo (cacheado antes del cambio de rol) que
+// pise el rol recien elegido con el anterior por una carrera de red.
+let managedLogin = false;
 
-export function setPendingSignupRole(role: "customer" | "professional" | undefined) {
-  pendingSignupRole = role;
+export function beginManagedLogin() {
+  managedLogin = true;
 }
 
-export function peekPendingSignupRole() {
-  return pendingSignupRole;
+export function endManagedLogin() {
+  managedLogin = false;
 }
 
-export function clearPendingSignupRole() {
-  pendingSignupRole = undefined;
+export function isManagedLogin() {
+  return managedLogin;
 }

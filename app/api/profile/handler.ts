@@ -15,7 +15,7 @@ export function createProfileGetHandler(dependencies: Dependencies) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const profile = await dependencies.repository.get(actor.id);
+    const profile = await dependencies.repository.get(actor.id, actor.role);
     const body = profile ?? { userId: actor.id, role: actor.role, phone: "", trades: [], coverage: [] };
 
     if (profile?.photoPath && dependencies.signPhoto) {

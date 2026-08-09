@@ -3,8 +3,11 @@
 import { useEffect, useState, type ChangeEvent } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
 
 import { useAuth } from "@/app/providers/AuthProvider";
+import { auth } from "@/src/client/firebase-client";
+import { clearSession } from "@/src/client/session-sync";
 import { TRADES, TRADE_LABELS, type UserProfile } from "@/src/domain/profile";
 
 // Leaflet toca `window` al importarse: solo puede correr en el cliente.
@@ -170,7 +173,26 @@ export default function PerfilPage() {
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="mb-6 text-2xl font-bold">Mi perfil</h1>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Mi perfil</h1>
+          <p className="text-sm text-[#777166]">
+            Estás en modo {role === "professional" ? "profesional" : "cliente"}. Para el otro
+            modo, cerrá sesión y volvé a entrar eligiéndolo.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="w-fit shrink-0 text-sm font-medium underline"
+          onClick={async () => {
+            if (auth) await signOut(auth);
+            await clearSession();
+            router.push("/login");
+          }}
+        >
+          Cerrar sesión
+        </button>
+      </div>
 
       <section className="flex flex-col gap-4">
         <label className="flex flex-col gap-1">
@@ -298,29 +320,6 @@ export default function PerfilPage() {
           </>
         )}
 
-        {role === "customer" && (
-          <button
-            type="button"
-            className="w-fit text-sm underline"
-            onClick={async () => {
-              const token = await user.getIdToken();
-              await fetch("/api/profile/become-professional", {
-                method: "POST",
-                headers: { authorization: `Bearer ${token}` },
-              });
-              const freshToken = await user.getIdToken(true);
-              await fetch("/api/session", {
-                method: "POST",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ idToken: freshToken }),
-                credentials: "include",
-              });
-              window.location.reload();
-            }}
-          >
-            ¿Sos profesional? Sumá tus oficios acá.
-          </button>
-        )}
 
         <button
           type="button"

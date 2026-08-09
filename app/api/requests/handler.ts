@@ -79,7 +79,7 @@ export function createRequestsGetHandler(dependencies: GetDependencies) {
     }
 
     if (actor.role === "professional") {
-      const profile = await dependencies.profileRepository.get(actor.id);
+      const profile = await dependencies.profileRepository.get(actor.id, "professional");
       const open = await dependencies.repository.listOpen();
       const matching = open.filter((item) =>
         canProfessionalViewRequest(

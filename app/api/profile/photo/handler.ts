@@ -44,7 +44,7 @@ export function createProfilePhotoPostHandler(dependencies: Dependencies) {
       );
     }
 
-    await dependencies.repository.setPhotoPath(actor.id, storagePath);
+    await dependencies.repository.setPhotoPath(actor.id, "professional", storagePath);
     const photoUrl = await dependencies.sign(storagePath);
     return Response.json({ photoUrl });
   };

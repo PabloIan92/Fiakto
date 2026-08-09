@@ -28,7 +28,7 @@ export function createRequestStartHandler(dependencies: Dependencies) {
     const found = open.find((item) => item.id === id);
     if (!found) return Response.json({ error: "Not found" }, { status: 404 });
 
-    const profile = await dependencies.profileRepository.get(actor.id);
+    const profile = await dependencies.profileRepository.get(actor.id, "professional");
     const canView = canProfessionalViewRequest(
       {
         trade: found.triage?.trade ?? "",

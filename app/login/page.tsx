@@ -13,7 +13,7 @@ import {
 
 import { auth } from "@/src/client/firebase-client";
 import { syncSession } from "@/src/client/session-sync";
-import { setPendingSignupRole, clearPendingSignupRole } from "@/src/client/pending-role";
+import { beginManagedLogin, endManagedLogin } from "@/src/client/pending-role";
 
 const ROLE_HOME: Record<"customer" | "professional" | "admin", string> = {
   customer: "/cliente/solicitudes",
@@ -26,20 +26,20 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [signupRole, setSignupRole] = useState<"customer" | "professional" | null>(null);
+  const [chosenRole, setChosenRole] = useState<"customer" | "professional" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Comun a email/password y Google: una vez que Firebase confirma el login,
-  // sincroniza el rol elegido (si es alta) y redirige segun el rol real.
-  async function syncSessionAndRedirect(user: User, requestedRole?: "customer" | "professional") {
+  // sincroniza el rol elegido para esta sesion y redirige segun corresponda.
+  async function syncSessionAndRedirect(user: User, requestedRole: "customer" | "professional") {
     let token = await user.getIdToken();
     const { needsRefresh } = await syncSession(token, fetch, requestedRole);
     if (needsRefresh) {
       token = await user.getIdToken(true);
       await syncSession(token);
     }
-    clearPendingSignupRole();
+    endManagedLogin();
 
     const tokenResult = await user.getIdTokenResult(true);
     const role = tokenResult.claims.role;
@@ -54,8 +54,8 @@ export default function LoginPage() {
     event.preventDefault();
     setError(null);
 
-    if (mode === "signup" && !signupRole) {
-      setError("Elegí si querés una cuenta de cliente o de profesional.");
+    if (!chosenRole) {
+      setError("Elegí si querés entrar como cliente o como profesional.");
       return;
     }
 
@@ -66,7 +66,7 @@ export default function LoginPage() {
         return;
       }
 
-      setPendingSignupRole(mode === "signup" ? signupRole! : undefined);
+      beginManagedLogin();
 
       if (mode === "signup") {
         await createUserWithEmailAndPassword(auth, email, password);
@@ -76,9 +76,9 @@ export default function LoginPage() {
 
       const user = auth.currentUser;
       if (!user) throw new Error("No se pudo obtener el usuario recién autenticado.");
-      await syncSessionAndRedirect(user, mode === "signup" ? signupRole! : undefined);
+      await syncSessionAndRedirect(user, chosenRole);
     } catch {
-      clearPendingSignupRole();
+      endManagedLogin();
       setError("No pudimos iniciar sesión. Revisá el email y la contraseña.");
     } finally {
       setSubmitting(false);
@@ -88,8 +88,8 @@ export default function LoginPage() {
   async function handleGoogleSignIn() {
     setError(null);
 
-    if (mode === "signup" && !signupRole) {
-      setError("Elegí si querés una cuenta de cliente o de profesional.");
+    if (!chosenRole) {
+      setError("Elegí si querés entrar como cliente o como profesional.");
       return;
     }
 
@@ -100,11 +100,11 @@ export default function LoginPage() {
         return;
       }
 
-      setPendingSignupRole(mode === "signup" ? signupRole! : undefined);
+      beginManagedLogin();
       const { user } = await signInWithPopup(auth, new GoogleAuthProvider());
-      await syncSessionAndRedirect(user, mode === "signup" ? signupRole! : undefined);
+      await syncSessionAndRedirect(user, chosenRole);
     } catch {
-      clearPendingSignupRole();
+      endManagedLogin();
       setError("No pudimos iniciar sesión con Google.");
     } finally {
       setSubmitting(false);
@@ -135,46 +135,47 @@ export default function LoginPage() {
           className="border border-[#181713]/20 bg-[#fffdf8] p-6 shadow-[8px_8px_0_#181713] sm:p-8"
         >
           <div className="space-y-6">
-            {mode === "signup" && (
-              <div>
-                <span className="mb-2 block text-sm font-bold">Tipo de cuenta</span>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    aria-pressed={signupRole === "customer"}
-                    onClick={() => setSignupRole("customer")}
-                    className={`border px-4 py-3 text-left text-sm font-bold transition ${
-                      signupRole === "customer"
-                        ? "border-[#dc4b2f] bg-[#dc4b2f]/10"
-                        : "border-[#181713]/20 hover:border-[#181713]/40"
-                    }`}
-                  >
-                    Soy cliente
-                    <span className="mt-1 block text-xs font-normal text-[#777166]">
-                      Publico lo que necesito
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={signupRole === "professional"}
-                    onClick={() => setSignupRole("professional")}
-                    className={`border px-4 py-3 text-left text-sm font-bold transition ${
-                      signupRole === "professional"
-                        ? "border-[#dc4b2f] bg-[#dc4b2f]/10"
-                        : "border-[#181713]/20 hover:border-[#181713]/40"
-                    }`}
-                  >
-                    Soy profesional
-                    <span className="mt-1 block text-xs font-normal text-[#777166]">
-                      Ofrezco un oficio
-                    </span>
-                  </button>
-                </div>
-                <p className="mt-2 text-xs text-[#777166]">
-                  Son cuentas separadas: si querés ambas, usá un email distinto para cada una.
-                </p>
+            <div>
+              <span className="mb-2 block text-sm font-bold">
+                {mode === "signup" ? "¿Cómo querés registrarte?" : "¿Cómo querés entrar?"}
+              </span>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  aria-pressed={chosenRole === "customer"}
+                  onClick={() => setChosenRole("customer")}
+                  className={`border px-4 py-3 text-left text-sm font-bold transition ${
+                    chosenRole === "customer"
+                      ? "border-[#dc4b2f] bg-[#dc4b2f]/10"
+                      : "border-[#181713]/20 hover:border-[#181713]/40"
+                  }`}
+                >
+                  Soy cliente
+                  <span className="mt-1 block text-xs font-normal text-[#777166]">
+                    Publico lo que necesito
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={chosenRole === "professional"}
+                  onClick={() => setChosenRole("professional")}
+                  className={`border px-4 py-3 text-left text-sm font-bold transition ${
+                    chosenRole === "professional"
+                      ? "border-[#dc4b2f] bg-[#dc4b2f]/10"
+                      : "border-[#181713]/20 hover:border-[#181713]/40"
+                  }`}
+                >
+                  Soy profesional
+                  <span className="mt-1 block text-xs font-normal text-[#777166]">
+                    Ofrezco un oficio
+                  </span>
+                </button>
               </div>
-            )}
+              <p className="mt-2 text-xs text-[#777166]">
+                Podés usar el mismo email para las dos cosas: elegís con cuál entrar cada vez que
+                iniciás sesión.
+              </p>
+            </div>
             <label htmlFor="email" className="block">
               <span className="mb-2 block text-sm font-bold">Email</span>
               <input
@@ -210,7 +211,7 @@ export default function LoginPage() {
           <div className="mt-8 border-t border-[#181713]/15 pt-6">
             <button
               type="submit"
-              disabled={submitting || (mode === "signup" && !signupRole)}
+              disabled={submitting || !chosenRole}
               className="w-full bg-[#dc4b2f] px-6 py-4 text-base font-black text-white transition hover:bg-[#bd351f] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting
@@ -231,7 +232,7 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={handleGoogleSignIn}
-          disabled={submitting || (mode === "signup" && !signupRole)}
+          disabled={submitting || !chosenRole}
           className="mt-4 flex w-full items-center justify-center gap-3 border border-[#181713]/20 bg-[#fffdf8] px-6 py-3 text-sm font-bold transition hover:border-[#181713]/40 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -260,7 +261,6 @@ export default function LoginPage() {
           className="mt-6 w-fit text-sm font-bold underline"
           onClick={() => {
             setMode(mode === "signup" ? "signin" : "signup");
-            setSignupRole(null);
           }}
         >
           {mode === "signup" ? "Ya tengo cuenta" : "Crear una cuenta nueva"}

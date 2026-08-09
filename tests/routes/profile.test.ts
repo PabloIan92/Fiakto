@@ -8,14 +8,16 @@ import {
 
 function dependencies(actor: { id: string; role: "customer" | "professional" | "admin" } | null) {
   const stored = new Map<string, UserProfile>();
+  const key = (userId: string, role: string) => `${userId}_${role}`;
   return {
     stored,
     deps: {
       authenticate: async () => actor,
       repository: {
-        get: async (userId: string) => stored.get(userId) ?? null,
+        get: async (userId: string, role: "customer" | "professional" | "admin") =>
+          stored.get(key(userId, role)) ?? null,
         upsert: async (profile: UserProfile) => {
-          stored.set(profile.userId, profile);
+          stored.set(key(profile.userId, profile.role), profile);
         },
       },
     },
@@ -70,8 +72,8 @@ describe("PUT /api/profile", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(stored.get("customer-1")?.phone).toBe("+54 11 5555-5555");
-    expect(stored.get("customer-1")?.trades).toEqual([]);
+    expect(stored.get("customer-1_customer")?.phone).toBe("+54 11 5555-5555");
+    expect(stored.get("customer-1_customer")?.trades).toEqual([]);
   });
 
   it("saves trades for a professional", async () => {
@@ -84,7 +86,7 @@ describe("PUT /api/profile", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(stored.get("pro-1")?.trades).toEqual(["cerrajeria", "plomeria"]);
+    expect(stored.get("pro-1_professional")?.trades).toEqual(["cerrajeria", "plomeria"]);
   });
 
   it("rejects an invalid phone", async () => {
