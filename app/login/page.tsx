@@ -3,7 +3,13 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  type User,
+} from "firebase/auth";
 
 import { auth } from "@/src/client/firebase-client";
 import { syncSession } from "@/src/client/session-sync";
@@ -23,6 +29,26 @@ export default function LoginPage() {
   const [signupRole, setSignupRole] = useState<"customer" | "professional" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Comun a email/password y Google: una vez que Firebase confirma el login,
+  // sincroniza el rol elegido (si es alta) y redirige segun el rol real.
+  async function syncSessionAndRedirect(user: User, requestedRole?: "customer" | "professional") {
+    let token = await user.getIdToken();
+    const { needsRefresh } = await syncSession(token, fetch, requestedRole);
+    if (needsRefresh) {
+      token = await user.getIdToken(true);
+      await syncSession(token);
+    }
+    clearPendingSignupRole();
+
+    const tokenResult = await user.getIdTokenResult(true);
+    const role = tokenResult.claims.role;
+    const destination =
+      role === "customer" || role === "professional" || role === "admin"
+        ? ROLE_HOME[role]
+        : "/cliente/solicitudes";
+    router.push(destination);
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -50,29 +76,36 @@ export default function LoginPage() {
 
       const user = auth.currentUser;
       if (!user) throw new Error("No se pudo obtener el usuario recién autenticado.");
-
-      let token = await user.getIdToken();
-      const { needsRefresh } = await syncSession(
-        token,
-        fetch,
-        mode === "signup" ? signupRole! : undefined,
-      );
-      if (needsRefresh) {
-        token = await user.getIdToken(true);
-        await syncSession(token);
-      }
-      clearPendingSignupRole();
-
-      const tokenResult = await user.getIdTokenResult(true);
-      const role = tokenResult.claims.role;
-      const destination =
-        role === "customer" || role === "professional" || role === "admin"
-          ? ROLE_HOME[role]
-          : "/cliente/solicitudes";
-      router.push(destination);
+      await syncSessionAndRedirect(user, mode === "signup" ? signupRole! : undefined);
     } catch {
       clearPendingSignupRole();
       setError("No pudimos iniciar sesión. Revisá el email y la contraseña.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setError(null);
+
+    if (mode === "signup" && !signupRole) {
+      setError("Elegí si querés una cuenta de cliente o de profesional.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      if (!auth) {
+        setError("Firebase no está configurado en este entorno todavía.");
+        return;
+      }
+
+      setPendingSignupRole(mode === "signup" ? signupRole! : undefined);
+      const { user } = await signInWithPopup(auth, new GoogleAuthProvider());
+      await syncSessionAndRedirect(user, mode === "signup" ? signupRole! : undefined);
+    } catch {
+      clearPendingSignupRole();
+      setError("No pudimos iniciar sesión con Google.");
     } finally {
       setSubmitting(false);
     }
@@ -188,6 +221,39 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+
+        <div className="mt-4 flex items-center gap-3 text-xs font-semibold uppercase tracking-widest text-[#777166]">
+          <span className="h-px flex-1 bg-[#181713]/15" />
+          o
+          <span className="h-px flex-1 bg-[#181713]/15" />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGoogleSignIn}
+          disabled={submitting || (mode === "signup" && !signupRole)}
+          className="mt-4 flex w-full items-center justify-center gap-3 border border-[#181713]/20 bg-[#fffdf8] px-6 py-3 text-sm font-bold transition hover:border-[#181713]/40 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+            <path
+              fill="#4285F4"
+              d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v2.98h3.86c2.26-2.08 3.56-5.14 3.56-8.8Z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 24c3.24 0 5.95-1.08 7.93-2.92l-3.86-2.98c-1.07.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.28v3.09C3.26 21.3 7.31 24 12 24Z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.28A11.95 11.95 0 0 0 0 12c0 1.93.46 3.76 1.28 5.38l3.99-3.09Z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 4.75c1.76 0 3.34.61 4.59 1.8l3.42-3.42C17.94 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.28 6.62l3.99 3.09C6.22 6.86 8.87 4.75 12 4.75Z"
+            />
+          </svg>
+          Continuar con Google
+        </button>
 
         <button
           type="button"
