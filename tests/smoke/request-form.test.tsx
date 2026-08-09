@@ -1,5 +1,13 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+}));
+
+vi.mock("@/app/providers/AuthProvider", () => ({
+  useRoleGuard: () => ({ ready: true }),
+}));
 
 import NewRequestPage from "@/app/cliente/solicitudes/nueva/page";
 

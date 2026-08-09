@@ -1,10 +1,12 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { onIdTokenChanged, type User } from "firebase/auth";
 
 import { auth } from "@/src/client/firebase-client";
 import { syncSession } from "@/src/client/session-sync";
+import { peekPendingSignupRole } from "@/src/client/pending-role";
 
 type Role = "customer" | "professional" | "admin" | null;
 
@@ -49,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const token = await nextUser.getIdToken();
-      const { needsRefresh } = await syncSession(token);
+      const { needsRefresh } = await syncSession(token, fetch, peekPendingSignupRole());
       if (needsRefresh) {
         const freshToken = await nextUser.getIdToken(true);
         await syncSession(freshToken);
@@ -61,4 +63,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{ user, role, loading }}>{children}</AuthContext.Provider>
   );
+}
+
+// Cliente y profesional son cuentas separadas: esta guarda evita que quien
+// entró con una pueda ver u operar las pantallas de la otra navegando por
+// URL directa. "admin" pasa cualquier guarda.
+export function useRoleGuard(requiredRole: "customer" | "professional", redirectTo: string) {
+  const { user, role, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+    if (role && role !== requiredRole && role !== "admin") {
+      router.replace(redirectTo);
+    }
+  }, [user, role, loading, router, requiredRole, redirectTo]);
+
+  return { ready: !loading && !!user && (role === requiredRole || role === "admin") };
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useAuth } from "@/app/providers/AuthProvider";
+import { useAuth, useRoleGuard } from "@/app/providers/AuthProvider";
 import { formatSlaStatus } from "@/app/components/sla-status";
 
 type Opportunity = {
@@ -20,11 +20,12 @@ const STATUS_LABELS: Record<Opportunity["status"], string> = {
 };
 
 export default function OportunidadesPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
+  const { ready } = useRoleGuard("professional", "/cliente/solicitudes");
   const [opportunities, setOpportunities] = useState<Opportunity[] | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!ready || !user) return;
     (async () => {
       const token = await user.getIdToken();
       const response = await fetch("/api/requests", {
@@ -39,7 +40,7 @@ export default function OportunidadesPage() {
     })();
   }, [user]);
 
-  if (authLoading || opportunities === null) {
+  if (!ready || opportunities === null) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-12">
         <p>Cargando oportunidades…</p>

@@ -3,11 +3,12 @@ export type SessionSyncResult = { needsRefresh: boolean };
 export async function syncSession(
   idToken: string,
   fetchImpl: typeof fetch = fetch,
+  requestedRole?: "customer" | "professional",
 ): Promise<SessionSyncResult> {
   const response = await fetchImpl("/api/session", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ idToken }),
+    body: JSON.stringify({ idToken, requestedRole }),
     credentials: "include",
   });
   if (!response.ok) return { needsRefresh: false };

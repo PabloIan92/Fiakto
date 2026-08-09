@@ -5,6 +5,7 @@ import type { ProfileRepository } from "@/src/server/repositories/profile-reposi
 export type Dependencies = {
   authenticate(request: Request): Promise<Actor | null>;
   repository: ProfileRepository;
+  signPhoto?(storagePath: string): Promise<string>;
 };
 
 export function createProfileGetHandler(dependencies: Dependencies) {
@@ -15,9 +16,14 @@ export function createProfileGetHandler(dependencies: Dependencies) {
     }
 
     const profile = await dependencies.repository.get(actor.id);
-    return Response.json(
-      profile ?? { userId: actor.id, role: actor.role, phone: "", trades: [], coverage: [] },
-    );
+    const body = profile ?? { userId: actor.id, role: actor.role, phone: "", trades: [], coverage: [] };
+
+    if (profile?.photoPath && dependencies.signPhoto) {
+      const photoUrl = await dependencies.signPhoto(profile.photoPath);
+      return Response.json({ ...body, photoUrl });
+    }
+
+    return Response.json(body);
   };
 }
 

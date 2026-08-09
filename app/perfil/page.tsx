@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 
@@ -35,6 +35,15 @@ const EMPTY_FORM: FormState = {
   coverage: "",
 };
 
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function PerfilPage() {
   const router = useRouter();
   const { user, role, loading: authLoading } = useAuth();
@@ -42,6 +51,9 @@ export default function PerfilPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -55,7 +67,7 @@ export default function PerfilPage() {
         headers: { authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        const profile = (await response.json()) as UserProfile;
+        const profile = (await response.json()) as UserProfile & { photoUrl?: string };
         setForm({
           phone: profile.phone ?? "",
           province: profile.location?.province ?? "",
@@ -66,10 +78,45 @@ export default function PerfilPage() {
           trades: profile.trades ?? [],
           coverage: (profile.coverage ?? []).join(", "),
         });
+        setPhotoUrl(profile.photoUrl ?? null);
       }
       setLoading(false);
     })();
   }, [user, authLoading, router]);
+
+  async function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+    setPhotoError("");
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setPhotoError("Usá JPG, PNG o WEBP.");
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setPhotoError("La foto no puede superar los 3 MB.");
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const token = await user.getIdToken();
+      const photoBase64 = await readFileAsBase64(file);
+      const response = await fetch("/api/profile/photo", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ photoBase64, contentType: file.type }),
+      });
+      if (response.ok) {
+        const data = (await response.json()) as { photoUrl: string };
+        setPhotoUrl(data.photoUrl);
+      } else {
+        setPhotoError("No pudimos subir la foto. Probá de nuevo.");
+      }
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
 
   async function handleSubmit() {
     if (!user) return;
@@ -127,55 +174,99 @@ export default function PerfilPage() {
 
       <section className="flex flex-col gap-4">
         <label className="flex flex-col gap-1">
-          <span>Teléfono</span>
+          <span>Teléfono *</span>
           <input
             type="tel"
+            required
             value={form.phone}
             onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
             className="rounded border border-[#181713]/20 px-3 py-2"
           />
         </label>
 
-        <h2 className="text-lg font-semibold">Mi domicilio</h2>
-        <p className="text-sm text-[#777166]">
-          Este es tu domicilio exacto: solo vos lo ves con precisión. A los profesionales
-          únicamente les mostramos la zona aproximada de cada solicitud.
-        </p>
-        <div className="grid grid-cols-2 gap-4">
-          <label className="flex flex-col gap-1">
-            <span>Provincia</span>
-            <input
-              value={form.province}
-              onChange={(event) => setForm((prev) => ({ ...prev, province: event.target.value }))}
-              className="rounded border border-[#181713]/20 px-3 py-2"
+        {role === "customer" && (
+          <>
+            <h2 className="text-lg font-semibold">Mi domicilio</h2>
+            <p className="text-sm text-[#777166]">
+              Este es tu domicilio exacto: solo vos lo ves con precisión. A los profesionales
+              únicamente les mostramos la zona aproximada de cada solicitud.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <label className="flex flex-col gap-1">
+                <span>Provincia</span>
+                <input
+                  value={form.province}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, province: event.target.value }))
+                  }
+                  className="rounded border border-[#181713]/20 px-3 py-2"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span>Localidad</span>
+                <input
+                  value={form.locality}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, locality: event.target.value }))
+                  }
+                  className="rounded border border-[#181713]/20 px-3 py-2"
+                />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1">
+              <span>Dirección</span>
+              <input
+                value={form.exactAddress}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, exactAddress: event.target.value }))
+                }
+                className="rounded border border-[#181713]/20 px-3 py-2"
+              />
+            </label>
+            <MapPicker
+              value={form.lat !== null && form.lng !== null ? { lat: form.lat, lng: form.lng } : null}
+              onChange={({ lat, lng }) => setForm((prev) => ({ ...prev, lat, lng }))}
             />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span>Localidad</span>
-            <input
-              value={form.locality}
-              onChange={(event) => setForm((prev) => ({ ...prev, locality: event.target.value }))}
-              className="rounded border border-[#181713]/20 px-3 py-2"
-            />
-          </label>
-        </div>
-        <label className="flex flex-col gap-1">
-          <span>Dirección</span>
-          <input
-            value={form.exactAddress}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, exactAddress: event.target.value }))
-            }
-            className="rounded border border-[#181713]/20 px-3 py-2"
-          />
-        </label>
-        <MapPicker
-          value={form.lat !== null && form.lng !== null ? { lat: form.lat, lng: form.lng } : null}
-          onChange={({ lat, lng }) => setForm((prev) => ({ ...prev, lat, lng }))}
-        />
+          </>
+        )}
 
         {role === "professional" && (
           <>
+            <h2 className="text-lg font-semibold">Foto de perfil *</h2>
+            <p className="text-sm text-[#777166]">
+              Una foto de tu cara ayuda a que los clientes confíen en vos. Es obligatoria para
+              aparecer en las solicitudes abiertas.
+            </p>
+            <div className="flex items-center gap-4">
+              {photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- foto firmada de Storage, no un asset local
+                <img
+                  src={photoUrl}
+                  alt="Tu foto de perfil"
+                  className="h-20 w-20 rounded-full border border-[#181713]/20 object-cover"
+                />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-[#181713]/30 text-xs text-[#777166]">
+                  Sin foto
+                </div>
+              )}
+              <label className="cursor-pointer rounded border border-[#181713]/20 px-4 py-2 text-sm font-medium hover:bg-[#181713]/5">
+                {uploadingPhoto ? "Subiendo…" : photoUrl ? "Cambiar foto" : "Subir foto"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handlePhotoChange}
+                  disabled={uploadingPhoto}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            {photoError && (
+              <p role="alert" className="text-sm text-red-600">
+                {photoError}
+              </p>
+            )}
+
             <h2 className="text-lg font-semibold">Mis oficios</h2>
             <div className="flex flex-wrap gap-2">
               {TRADES.map((trade) => (

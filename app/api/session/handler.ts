@@ -5,7 +5,7 @@ export type DecodedToken = {
 
 export type Dependencies = {
   verifyIdToken(idToken: string): Promise<DecodedToken>;
-  ensureDefaultRole(uid: string): Promise<void>;
+  ensureDefaultRole(uid: string, requestedRole?: "customer" | "professional"): Promise<void>;
 };
 
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 14; // 14 días: "recordar sesión"
@@ -23,6 +23,11 @@ export function createSessionPostHandler(dependencies: Dependencies) {
     if (typeof idToken !== "string" || idToken.length === 0) {
       return Response.json({ error: "Missing idToken" }, { status: 400 });
     }
+    const requestedRoleRaw = (body as { requestedRole?: unknown })?.requestedRole;
+    const requestedRole =
+      requestedRoleRaw === "customer" || requestedRoleRaw === "professional"
+        ? requestedRoleRaw
+        : undefined;
 
     let decoded: DecodedToken;
     try {
@@ -32,11 +37,12 @@ export function createSessionPostHandler(dependencies: Dependencies) {
     }
 
     if (!decoded.role) {
-      // Primer login de este usuario: le asignamos rol "customer" por
-      // defecto. El claim recién se ve reflejado en el próximo ID token,
-      // así que le avisamos al cliente que tiene que refrescarlo y
-      // reintentar antes de considerar la sesión lista.
-      await dependencies.ensureDefaultRole(decoded.uid);
+      // Primer login de este usuario: se asigna el rol elegido en el signup
+      // (o "customer" por defecto si no se mando ninguno, ej. logins viejos).
+      // El claim recién se ve reflejado en el próximo ID token, así que le
+      // avisamos al cliente que tiene que refrescarlo y reintentar antes de
+      // considerar la sesión lista.
+      await dependencies.ensureDefaultRole(decoded.uid, requestedRole);
       return Response.json({ needsRefresh: true });
     }
 

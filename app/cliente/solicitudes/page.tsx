@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useAuth } from "@/app/providers/AuthProvider";
+import { useAuth, useRoleGuard } from "@/app/providers/AuthProvider";
 import { formatSlaStatus } from "@/app/components/sla-status";
 
 type RequestItem = {
@@ -44,11 +44,12 @@ const STATUS_COLORS: Record<RequestItem["status"], string> = {
 };
 
 export default function MisSolicitudesPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
+  const { ready } = useRoleGuard("customer", "/profesional/oportunidades");
   const [requests, setRequests] = useState<RequestItem[] | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!ready || !user) return;
     (async () => {
       const token = await user.getIdToken();
       const response = await fetch("/api/requests", {
@@ -63,7 +64,7 @@ export default function MisSolicitudesPage() {
     })();
   }, [user]);
 
-  if (authLoading || requests === null) {
+  if (!ready || requests === null) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-12">
         <p>Cargando tus solicitudes…</p>

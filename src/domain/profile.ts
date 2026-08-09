@@ -47,6 +47,9 @@ export const UserProfileSchema = z.object({
   location: ProfileLocationSchema.optional(),
   trades: z.array(TradeSchema).max(TRADES.length).default([]),
   coverage: z.array(z.string().trim().min(2)).max(50).default([]),
+  // Ruta en Cloud Storage de la foto de rostro del profesional (no una URL:
+  // se firma al leer, ver src/server/media.ts).
+  photoPath: z.string().trim().min(1).optional(),
 });
 
 export type UserProfile = z.infer<typeof UserProfileSchema>;

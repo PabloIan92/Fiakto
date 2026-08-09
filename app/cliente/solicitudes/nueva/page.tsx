@@ -4,6 +4,8 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { type ChangeEvent, type FormEvent, useState } from "react";
 
+import { useRoleGuard } from "@/app/providers/AuthProvider";
+
 // Leaflet toca `window` al importarse: solo puede correr en el cliente.
 const MapPicker = dynamic(
   () => import("@/app/components/MapPicker").then((mod) => mod.MapPicker),
@@ -21,6 +23,7 @@ const MAX_FILES = 6;
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 export default function NewRequestPage() {
+  const { ready } = useRoleGuard("customer", "/profesional/oportunidades");
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
@@ -76,6 +79,14 @@ export default function NewRequestPage() {
       }),
     });
     setStatus(response.ok ? "done" : "error");
+  }
+
+  if (!ready) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f3efe6] text-[#181713]">
+        <p>Cargando…</p>
+      </main>
+    );
   }
 
   return (

@@ -11,4 +11,8 @@ export class FirestoreProfileRepository implements ProfileRepository {
   async upsert(profile: UserProfile) {
     await db.collection("profiles").doc(profile.userId).set(profile, { merge: true });
   }
+
+  async setPhotoPath(userId: string, photoPath: string) {
+    await db.collection("profiles").doc(userId).set({ userId, photoPath }, { merge: true });
+  }
 }

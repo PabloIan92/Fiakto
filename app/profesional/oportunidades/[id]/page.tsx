@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 
-import { useAuth } from "@/app/providers/AuthProvider";
+import { useAuth, useRoleGuard } from "@/app/providers/AuthProvider";
 import { formatSlaStatus } from "@/app/components/sla-status";
 
 // Leaflet toca `window` al importarse: solo puede correr en el cliente.
@@ -26,14 +26,15 @@ type OpportunityDetail = {
 
 export default function OportunidadDetallePage() {
   const params = useParams<{ id: string }>();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
+  const { ready } = useRoleGuard("professional", "/cliente/solicitudes");
   const [opportunity, setOpportunity] = useState<OpportunityDetail | null>(null);
   const [status, setStatus] = useState<"loading" | "ok" | "not-found" | "forbidden">("loading");
   const [actionPending, setActionPending] = useState(false);
   const [reloadIndex, setReloadIndex] = useState(0);
 
   useEffect(() => {
-    if (!user) return;
+    if (!ready || !user) return;
     (async () => {
       const token = await user.getIdToken();
       const response = await fetch(`/api/requests/${params.id}`, {
@@ -71,7 +72,7 @@ export default function OportunidadDetallePage() {
     setReloadIndex((n) => n + 1);
   }
 
-  if (authLoading || status === "loading") {
+  if (!ready || status === "loading") {
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">
         <p>Cargando…</p>
