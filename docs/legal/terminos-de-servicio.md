@@ -2,11 +2,11 @@
 
 > **Esta es una plantilla generada como punto de partida, no asesoramiento legal.** Antes de publicarla, hacé que un abogado matriculado en Argentina la revise — en particular las secciones 4 (deslinde de responsabilidad como intermediario), 6 (triage por IA / emergencias) y 11 (arbitraje).
 
-**Última actualización:** [COMPLETAR FECHA]
+**Última actualización:** 9 de agosto de 2026
 
 ## 1. Quiénes somos y qué es Fiakto
 
-Fiakto ("la Plataforma", "nosotros") es operada por [RAZÓN SOCIAL], CUIT [COMPLETAR], con domicilio en [COMPLETAR], Argentina ("Fiakto", "la Empresa").
+Fiakto ("la Plataforma", "nosotros") es un proyecto en etapa de desarrollo, todavía sin una entidad legal constituida que lo opere. Esta sección debe completarse con la razón social, CUIT y domicilio reales antes de operar comercialmente o publicar la plataforma a usuarios reales.
 
 Fiakto es una plataforma de intermediación tecnológica que conecta a personas que necesitan un servicio de reparación o mantenimiento del hogar ("Clientes") con profesionales independientes de oficios ("Profesionales"). **Fiakto no presta servicios de plomería, electricidad, gas ni ningún otro oficio: únicamente facilita el contacto y la comunicación entre Clientes y Profesionales.**
 
@@ -103,7 +103,7 @@ Estos Términos se rigen por las leyes de la República Argentina. Para todo lo 
 
 ## 14. Contacto
 
-[COMPLETAR: email de contacto legal, ej. legal@fiakto.com]
+fiaktoteayuda@gmail.com
 
 ---
 

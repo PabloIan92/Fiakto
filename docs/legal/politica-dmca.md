@@ -2,7 +2,7 @@
 
 > **Plantilla generada como punto de partida, no asesoramiento legal.** El registro de agente DMCA descripto abajo es un trámite real ante el **U.S. Copyright Office** (copyright.gov — no copyright.org, que no es el organismo oficial). Registrarse tiene sentido si Fiakto quiere ampararse en el "safe harbor" de la DMCA de EE.UU. (útil si en algún momento hay usuarios o infraestructura vinculada a EE.UU.); para el marco estrictamente argentino, esta política funciona igual como procedimiento de notificación y retiro (notice-and-takedown) aunque no exista una "DMCA" local formal — confirmar con un abogado si conviene además citar la Ley 11.723 de Propiedad Intelectual argentina en paralelo.
 
-**Última actualización:** [COMPLETAR FECHA]
+**Última actualización:** 9 de agosto de 2026
 
 ## 1. Responsabilidad por el contenido subido
 
@@ -16,9 +16,9 @@ Fiakto designa al siguiente agente para recibir notificaciones de presunta infra
 
 ```
 Agente DMCA de Fiakto
-Nombre: [COMPLETAR]
-Email: [COMPLETAR, ej. dmca@fiakto.com]
-Domicilio: [COMPLETAR]
+Nombre: [COMPLETAR: pendiente de designar formalmente, ver nota sobre entidad legal]
+Email: fiaktoteayuda@gmail.com
+Domicilio: [COMPLETAR: pendiente de designar formalmente, ver nota sobre entidad legal]
 ```
 
 > **Pendiente de acción real:** este registro se hace directamente en copyright.gov (tiene un costo de tasa y requiere una cuenta), no simplemente publicando este documento. Hasta completarlo, esta política funciona como procedimiento interno de notice-and-takedown pero no otorga la protección de safe harbor formal de la DMCA.
@@ -58,7 +58,7 @@ Al aceptar los [Términos de Servicio](./terminos-de-servicio.md), cada usuario 
 
 ## 7. Contacto
 
-[COMPLETAR: email de contacto, ej. dmca@fiakto.com]
+fiaktoteayuda@gmail.com
 
 ---
 

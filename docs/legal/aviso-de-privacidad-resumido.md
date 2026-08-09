@@ -10,7 +10,7 @@
 - 🤖 **Usamos inteligencia artificial (Google Gemini)** para clasificar tu solicitud y sugerir un rango de precio. Esto significa que tu descripción y las fotos/videos que subís se procesan en servidores de Google.
 - 🚨 **La detección automática de emergencias es orientativa.** Si hay riesgo real (fuga de gas, incendio, cableado expuesto), llamá directamente a los servicios de emergencia — no dependas de la app.
 - 🔒 Tus datos se guardan en Firebase (Google Cloud) con reglas de acceso restringidas.
-- ✋ Tenés derecho a acceder, corregir o pedir la eliminación de tus datos en cualquier momento, escribiendo a [COMPLETAR email].
+- ✋ Tenés derecho a acceder, corregir o pedir la eliminación de tus datos en cualquier momento, escribiendo a fiaktoteayuda@gmail.com.
 - 🔞 Fiakto es solo para mayores de 18 años.
 
 Al continuar, aceptás los [Términos de Servicio](./terminos-de-servicio.md) y la [Política de Privacidad](./politica-de-privacidad.md) completa.

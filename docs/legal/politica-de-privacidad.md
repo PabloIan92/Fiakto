@@ -2,11 +2,11 @@
 
 > **Plantilla generada como punto de partida, no asesoramiento legal.** Revisar con un abogado especializado en protección de datos antes de publicar, en particular la sección de transferencia internacional de datos (Google/Gemini/Firebase están fuera de Argentina).
 
-**Última actualización:** [COMPLETAR FECHA]
+**Última actualización:** 9 de agosto de 2026
 
 ## 1. Responsable del tratamiento de datos
 
-[RAZÓN SOCIAL], CUIT [COMPLETAR], con domicilio en [COMPLETAR] ("Fiakto"), es responsable del tratamiento de tus datos personales conforme a la **Ley 25.326 de Protección de los Datos Personales** de la República Argentina y su reglamentación, bajo control de la Agencia de Acceso a la Información Pública (AAIP).
+Fiakto es un proyecto en etapa de desarrollo, todavía sin una entidad legal constituida que lo opere — esta sección debe completarse con la razón social, CUIT y domicilio reales antes de operar comercialmente o publicar la plataforma a usuarios reales. Una vez constituida, esa entidad será responsable del tratamiento de tus datos personales conforme a la **Ley 25.326 de Protección de los Datos Personales** de la República Argentina y su reglamentación, bajo control de la Agencia de Acceso a la Información Pública (AAIP).
 
 ## 2. Qué datos recopilamos
 
@@ -63,7 +63,7 @@ Como titular de tus datos personales, tenés derecho a:
 - **Suprimir** tus datos, cuando corresponda legalmente.
 - **Oponerte** a determinados usos de tus datos.
 
-Para ejercer estos derechos, escribinos a [COMPLETAR email de contacto]. También podés hacer una denuncia ante la **Agencia de Acceso a la Información Pública** (AAIP), órgano de control de la Ley 25.326, si considerás que no respetamos tus derechos.
+Para ejercer estos derechos, escribinos a fiaktoteayuda@gmail.com. También podés hacer una denuncia ante la **Agencia de Acceso a la Información Pública** (AAIP), órgano de control de la Ley 25.326, si considerás que no respetamos tus derechos.
 
 ## 8. Retención de datos
 
@@ -83,7 +83,7 @@ Podemos actualizar esta política. Publicaremos la versión vigente en esta mism
 
 ## 12. Contacto
 
-[COMPLETAR: email de contacto para temas de privacidad, ej. privacidad@fiakto.com]
+fiaktoteayuda@gmail.com
 
 ---
 
