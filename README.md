@@ -46,7 +46,7 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 
 ### Prioridad alta — rematar lo de esta vuelta
 
-- [ ] `npm run build` de producción sigue roto por un bug abierto de Next.js 16.x (`InvariantError` al prerenderizar `/_global-error`, confirmado independiente de next-pwa/webpack/turbopack: [vercel/next.js#87719](https://github.com/vercel/next.js/issues/87719)). `npm run dev` funciona normal; bloquea publicar staging/producción hasta que Next.js lo arregle o se baje a Next 15.
+- [x] `npm run build` de producción funciona (Next 16→15.5.23, proyecto movido fuera de `system32` para evitar un lockfile ajeno que rompía el tracing de módulos, y `next-pwa` deshabilitado por defecto — ver nota de PWA más abajo).
 - [ ] Cargar Firebase real (ver `.env.example` pendiente más abajo) para poder probar el flujo de login/perfil end-to-end — hoy sin credenciales la app funciona pero como "visitante no logueado" en todas partes.
 
 ### Prioridad alta — completar la vertical
@@ -66,8 +66,16 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 - [ ] Añadir `apphosting.yaml` y configurar Firebase App Hosting.
 - [ ] Guardar `GEMINI_API_KEY` en Secret Manager.
 - [ ] Configurar Firebase Authentication, Firestore y Cloud Storage.
-- [ ] Ejecutar `npm run build` (con `--webpack` flag por compatibilidad next-pwa) y publicar URL de staging — bloqueado por el bug de Next.js de arriba.
+- [ ] Publicar URL de staging (el build ya funciona, ver arriba).
 - [ ] Verificar que los logs no incluyan tokens, documentos ni domicilios.
+
+### Legal / compliance (pendiente, antes de exponer la app a usuarios reales)
+
+- [x] **Declarar el uso de IA** (Gemini para triage) en los términos/política de privacidad — riesgo legal si no se declara. → [`docs/legal/politica-de-privacidad.md`](docs/legal/politica-de-privacidad.md)
+- [x] Términos de servicio. → [`docs/legal/terminos-de-servicio.md`](docs/legal/terminos-de-servicio.md)
+- [x] Cláusula de arbitraje. → [`docs/legal/clausula-arbitraje.md`](docs/legal/clausula-arbitraje.md)
+- [x] Etiqueta/aviso de privacidad. → [`docs/legal/aviso-de-privacidad-resumido.md`](docs/legal/aviso-de-privacidad-resumido.md)
+- [x] **DMCA / contenido con derechos de autor**: registrar un agente DMCA en copyright.gov (o el registro que corresponda) y agregar una cláusula de "notice and takedown" que traslade la responsabilidad de lo que se sube (fotos/videos de solicitudes) a quien lo sube, no a la plataforma. → [`docs/legal/politica-dmca.md`](docs/legal/politica-dmca.md)
 
 ### Después del MVP
 
@@ -93,8 +101,10 @@ Para usar Firebase y Gemini en un entorno real se necesitan credenciales de serv
 
 **Build producción:**
 ```bash
-npm run build        # usa --webpack flag internamente (next.config.ts)
+npm run build
 ```
+
+**Nota PWA:** `next-pwa` está deshabilitado por defecto (incluso en producción) porque su integración con Next 15 App Router rompía el prerender (`TypeError: Cannot read properties of undefined (reading 'call')` en `webpack-runtime.js`). Se puede reactivar con `NEXT_PUBLIC_ENABLE_PWA=true`, pero eso vuelve a romper `npm run build` — pendiente encontrar una alternativa compatible con Next 15/App Router antes de reactivarlo.
 
 ## Verificación
 

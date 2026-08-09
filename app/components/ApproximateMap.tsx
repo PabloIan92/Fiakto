@@ -55,7 +55,7 @@ export function ApproximateMap({ center, radiusKm, zoom = 12 }: ApproximateMapPr
       dashArray: "8, 8",
     }).addTo(map);
 
-    const marker = L.marker([center.lat, center.lng], {
+    L.marker([center.lat, center.lng], {
       icon: L.divIcon({
         className: "approximate-marker",
         html: '<div style="width: 24px; height: 24px; border-radius: 50%; background: #dc4b2f; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>',
