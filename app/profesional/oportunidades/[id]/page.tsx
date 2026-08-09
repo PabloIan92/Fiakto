@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 
 import { useAuth } from "@/app/providers/AuthProvider";
+import { formatSlaStatus } from "@/app/components/sla-status";
 
 // Leaflet toca `window` al importarse: solo puede correr en el cliente.
 const ApproximateMap = dynamic(
@@ -16,6 +17,11 @@ type OpportunityDetail = {
   id: string;
   description: string;
   location: { lat: number; lng: number; displayRadiusKm: number; locality: string; province: string };
+  status: "open" | "in_progress" | "completed";
+  slaHours?: number;
+  slaDeadline?: string;
+  workStartedAt?: string;
+  workCompletedAt?: string;
 };
 
 export default function OportunidadDetallePage() {
@@ -23,6 +29,8 @@ export default function OportunidadDetallePage() {
   const { user, loading: authLoading } = useAuth();
   const [opportunity, setOpportunity] = useState<OpportunityDetail | null>(null);
   const [status, setStatus] = useState<"loading" | "ok" | "not-found" | "forbidden">("loading");
+  const [actionPending, setActionPending] = useState(false);
+  const [reloadIndex, setReloadIndex] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -37,7 +45,31 @@ export default function OportunidadDetallePage() {
       setOpportunity((await response.json()) as OpportunityDetail);
       setStatus("ok");
     })();
-  }, [user, params.id]);
+  }, [user, params.id, reloadIndex]);
+
+  async function handleStart() {
+    if (!user) return;
+    setActionPending(true);
+    const token = await user.getIdToken();
+    await fetch(`/api/requests/${params.id}/start`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    setActionPending(false);
+    setReloadIndex((n) => n + 1);
+  }
+
+  async function handleComplete() {
+    if (!user) return;
+    setActionPending(true);
+    const token = await user.getIdToken();
+    await fetch(`/api/requests/${params.id}/complete`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    setActionPending(false);
+    setReloadIndex((n) => n + 1);
+  }
 
   if (authLoading || status === "loading") {
     return (
@@ -80,6 +112,61 @@ export default function OportunidadDetallePage() {
         center={{ lat: opportunity.location.lat, lng: opportunity.location.lng }}
         radiusKm={opportunity.location.displayRadiusKm}
       />
+
+      <div className="mt-8 border-t border-[#181713]/15 pt-6">
+        {opportunity.status === "open" && (
+          <button
+            type="button"
+            onClick={handleStart}
+            disabled={actionPending}
+            className="w-full bg-[#dc4b2f] px-6 py-4 text-base font-black text-white transition hover:bg-[#bd351f] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {actionPending ? "Iniciando…" : "Iniciar trabajo"}
+          </button>
+        )}
+
+        {opportunity.status === "in_progress" && opportunity.slaDeadline && (
+          <>
+            <SlaBanner slaDeadline={opportunity.slaDeadline} />
+            <button
+              type="button"
+              onClick={handleComplete}
+              disabled={actionPending}
+              className="mt-4 w-full bg-[#181713] px-6 py-4 text-base font-black text-white transition hover:bg-[#181713]/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {actionPending ? "Guardando…" : "Marcar como completado"}
+            </button>
+          </>
+        )}
+
+        {opportunity.status === "completed" && (
+          <p className="text-sm font-bold text-[#34745a]">
+            Trabajo completado
+            {opportunity.workCompletedAt &&
+              ` el ${new Date(opportunity.workCompletedAt).toLocaleString("es-AR")}`}
+            .
+          </p>
+        )}
+      </div>
     </main>
+  );
+}
+
+function SlaBanner({ slaDeadline }: { slaDeadline: string }) {
+  const [sla, setSla] = useState(() => formatSlaStatus(slaDeadline));
+
+  useEffect(() => {
+    const interval = setInterval(() => setSla(formatSlaStatus(slaDeadline)), 60_000);
+    return () => clearInterval(interval);
+  }, [slaDeadline]);
+
+  return (
+    <p
+      className={`border-l-2 pl-4 text-sm font-bold leading-6 ${
+        sla.overdue ? "border-[#b52f1c] text-[#b52f1c]" : "border-[#dc4b2f] text-[#181713]"
+      }`}
+    >
+      Ventana de reparación: {sla.label}.
+    </p>
   );
 }

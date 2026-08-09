@@ -36,7 +36,11 @@ describe("GET /api/requests/[id]", () => {
   it("returns 403 for a professional whose trade doesn't match", async () => {
     const handler = createRequestGetHandler({
       authenticate: async () => ({ id: "pro-1", role: "professional" }),
-      repository: { listByCustomer: async () => [], listOpen: async () => [openInLanus] },
+      repository: {
+        listByCustomer: async () => [],
+        listOpen: async () => [openInLanus],
+        listByProfessional: async () => [],
+      },
       profileRepository: {
         get: async () =>
           ({ userId: "pro-1", role: "professional", phone: "1", trades: ["electricidad"], coverage: ["Lanús"] }) as UserProfile,
@@ -51,7 +55,11 @@ describe("GET /api/requests/[id]", () => {
   it("hides exactAddress for a professional who can view the request", async () => {
     const handler = createRequestGetHandler({
       authenticate: async () => ({ id: "pro-1", role: "professional" }),
-      repository: { listByCustomer: async () => [], listOpen: async () => [openInLanus] },
+      repository: {
+        listByCustomer: async () => [],
+        listOpen: async () => [openInLanus],
+        listByProfessional: async () => [],
+      },
       profileRepository: {
         get: async () =>
           ({ userId: "pro-1", role: "professional", phone: "1", trades: ["plomeria"], coverage: ["Lanús"] }) as UserProfile,
@@ -65,10 +73,41 @@ describe("GET /api/requests/[id]", () => {
     expect(body.location).not.toHaveProperty("exactAddress");
   });
 
+  it("lets the assigned professional view their own in-progress job without rechecking trade/coverage", async () => {
+    const ownJob = {
+      ...openInLanus,
+      status: "in_progress" as const,
+      professionalId: "pro-1",
+      slaDeadline: "2026-08-12T12:00:00.000Z",
+    };
+    const handler = createRequestGetHandler({
+      authenticate: async () => ({ id: "pro-1", role: "professional" }),
+      repository: {
+        listByCustomer: async () => [],
+        listOpen: async () => [],
+        listByProfessional: async () => [ownJob],
+      },
+      profileRepository: {
+        get: async () =>
+          ({ userId: "pro-1", role: "professional", phone: "1", trades: ["electricidad"], coverage: ["Otra"] }) as UserProfile,
+        upsert: async () => undefined,
+      },
+    });
+
+    const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.status).toBe("in_progress");
+  });
+
   it("returns the owning customer's own request with the exact address", async () => {
     const handler = createRequestGetHandler({
       authenticate: async () => ({ id: "customer-1", role: "customer" }),
-      repository: { listByCustomer: async () => [openInLanus], listOpen: async () => [] },
+      repository: {
+        listByCustomer: async () => [openInLanus],
+        listOpen: async () => [],
+        listByProfessional: async () => [],
+      },
       profileRepository: { get: async () => null, upsert: async () => undefined },
     });
 
@@ -81,7 +120,11 @@ describe("GET /api/requests/[id]", () => {
   it("returns 404 for a request the customer doesn't own", async () => {
     const handler = createRequestGetHandler({
       authenticate: async () => ({ id: "someone-else", role: "customer" }),
-      repository: { listByCustomer: async () => [], listOpen: async () => [] },
+      repository: {
+        listByCustomer: async () => [],
+        listOpen: async () => [],
+        listByProfessional: async () => [],
+      },
       profileRepository: { get: async () => null, upsert: async () => undefined },
     });
 

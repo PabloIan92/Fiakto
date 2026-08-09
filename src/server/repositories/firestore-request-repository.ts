@@ -62,4 +62,33 @@ export class FirestoreRequestRepository implements RequestRepository {
       .get();
     return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as ServiceRequest) }));
   }
+
+  async listByProfessional(professionalId: string) {
+    const readClient = this.firestore as unknown as FirestoreReadClient;
+    const snapshot = await readClient
+      .collection("requests")
+      .where("professionalId", "==", professionalId)
+      .get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as ServiceRequest) }));
+  }
+
+  async startWork(
+    id: string,
+    input: { professionalId: string; workStartedAt: string; slaDeadline: string; slaHours: number },
+  ) {
+    await this.firestore.collection("requests").doc(id).update({
+      status: "in_progress",
+      professionalId: input.professionalId,
+      workStartedAt: input.workStartedAt,
+      slaDeadline: input.slaDeadline,
+      slaHours: input.slaHours,
+    });
+  }
+
+  async completeWork(id: string, input: { workCompletedAt: string }) {
+    await this.firestore.collection("requests").doc(id).update({
+      status: "completed",
+      workCompletedAt: input.workCompletedAt,
+    });
+  }
 }

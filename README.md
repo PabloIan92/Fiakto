@@ -33,6 +33,7 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 - [x] `/perfil` ya no se cuelga en "Cargando perfil…" sin sesión: redirige a `/login`.
 - [x] `/login` con el diseño brutalista del resto del sitio (`#181713`/`#dc4b2f`, bordes, sombra `8px_8px_0`).
 - [x] `TRADES` (perfil) y `TriageResult.trade` (triage por IA) unificados en un solo vocabulario (`src/domain/profile.ts`), agregando `refrigeracion` y `otro` al triage y sacando la lista duplicada que tenía `triage.ts`.
+- [x] **SLA / Ventana de reparación**: estados `in_progress`/`completed`, `slaDeadline` calculado según el `riskLevel` del triage (emergencia 4h, urgente 24h, normal 72h), tracking `workStartedAt`/`workCompletedAt`, alerta visual de vencimiento (`app/components/sla-status.ts`) en la lista y el detalle de oportunidades del profesional y en `/cliente/solicitudes`. Endpoints nuevos: `POST /api/requests/[id]/start` y `POST /api/requests/[id]/complete`. **Simplificación conocida**: como todavía no existe el flujo de presupuestos/aceptación (ver pendientes abajo), cualquier profesional que matchea oficio/cobertura puede iniciar un pedido "open" directamente — falta atarlo a que primero se acepte y pague un presupuesto.
 
 **Perfiles, sesión y oportunidades (feedback de prueba con usuarios reales):**
 - [x] **Vista de profesional** (`/profesional/oportunidades`, listado + detalle): filtra por oficio/cobertura vía `canProfessionalViewRequest`, siempre oculta `exactAddress`, muestra `ApproximateMap`.
@@ -56,7 +57,6 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 - [ ] Identidad verificada del profesional (el filtro de oportunidades hoy no la chequea).
 - [ ] Implementar presupuestos privados con protección contra duplicados.
 - [ ] Mostrar al cliente sus presupuestos sin filtrar datos de competidores.
-- [ ] **SLA / Ventana de reparación**: estados `in_progress` / `completed`, `slaDeadline`, alertas de vencimiento, tracking `workStartedAt` / `workCompletedAt`.
 - [ ] Agregar pruebas Playwright para el recorrido solicitud → triage → presupuesto.
 - [ ] Configurar Firebase Emulator Suite para desarrollo local reproducible.
 

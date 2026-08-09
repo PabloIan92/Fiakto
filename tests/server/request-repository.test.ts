@@ -33,6 +33,27 @@ class FakeRequestRepository implements RequestRepository {
       .filter(([, value]) => value.request.status === "open")
       .map(([id, value]) => ({ id, ...value.request }));
   }
+
+  async listByProfessional(professionalId: string) {
+    return [...this.requests.entries()]
+      .filter(([, value]) => value.request.professionalId === professionalId)
+      .map(([id, value]) => ({ id, ...value.request }));
+  }
+
+  async startWork(
+    id: string,
+    input: { professionalId: string; workStartedAt: string; slaDeadline: string; slaHours: number },
+  ) {
+    const stored = this.requests.get(id);
+    if (!stored) throw new Error("Request not found");
+    this.requests.set(id, { ...stored, request: { ...stored.request, status: "in_progress", ...input } });
+  }
+
+  async completeWork(id: string, input: { workCompletedAt: string }) {
+    const stored = this.requests.get(id);
+    if (!stored) throw new Error("Request not found");
+    this.requests.set(id, { ...stored, request: { ...stored.request, status: "completed", ...input } });
+  }
 }
 
 const baseRequest: ServiceRequest = {
@@ -116,6 +137,41 @@ describe("FirestoreRequestRepository", () => {
       data: { triage: plumbingTriage, status: "open" },
     });
     expect(firestore.updated[0]?.data.triagedAt).toBeDefined();
+  });
+
+  it("assigns the professional and sets the SLA deadline when starting work", async () => {
+    const firestore = new FakeFirestore();
+    const repository = new FirestoreRequestRepository(firestore);
+    await repository.startWork("request-7", {
+      professionalId: "pro-1",
+      workStartedAt: "2026-08-09T12:00:00.000Z",
+      slaDeadline: "2026-08-12T12:00:00.000Z",
+      slaHours: 72,
+    });
+
+    expect(firestore.updated[0]).toMatchObject({
+      collection: "requests",
+      id: "request-7",
+      data: {
+        status: "in_progress",
+        professionalId: "pro-1",
+        workStartedAt: "2026-08-09T12:00:00.000Z",
+        slaDeadline: "2026-08-12T12:00:00.000Z",
+        slaHours: 72,
+      },
+    });
+  });
+
+  it("marks the request completed", async () => {
+    const firestore = new FakeFirestore();
+    const repository = new FirestoreRequestRepository(firestore);
+    await repository.completeWork("request-7", { workCompletedAt: "2026-08-10T09:00:00.000Z" });
+
+    expect(firestore.updated[0]).toMatchObject({
+      collection: "requests",
+      id: "request-7",
+      data: { status: "completed", workCompletedAt: "2026-08-10T09:00:00.000Z" },
+    });
   });
 });
 

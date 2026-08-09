@@ -29,10 +29,36 @@ export const ServiceRequestSchema = z.object({
   location: LocationSchema,
   media: z.array(MediaSchema).max(6),
   status: z
-    .enum(["draft", "triaging", "open", "quoted", "accepted", "closed"])
+    .enum([
+      "draft",
+      "triaging",
+      "open",
+      "quoted",
+      "accepted",
+      "in_progress",
+      "completed",
+      "closed",
+    ])
     .default("draft"),
   triage: TriageResultSchema.optional(),
+  professionalId: z.string().optional(),
+  slaHours: z.number().positive().optional(),
+  slaDeadline: z.string().datetime().optional(),
+  workStartedAt: z.string().datetime().optional(),
+  workCompletedAt: z.string().datetime().optional(),
 });
 
 export type ServiceRequest = z.infer<typeof ServiceRequestSchema>;
 export type Location = z.infer<typeof LocationSchema>;
+
+// Ventana de reparación por nivel de riesgo del triage: cuanto más urgente,
+// menos tiempo tiene el profesional para completar el trabajo una vez
+// iniciado.
+export const SLA_HOURS_BY_RISK: Record<
+  z.infer<typeof TriageResultSchema>["riskLevel"],
+  number
+> = {
+  emergency: 4,
+  urgent: 24,
+  normal: 72,
+};

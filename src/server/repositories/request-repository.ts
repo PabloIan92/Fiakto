@@ -8,4 +8,10 @@ export interface RequestRepository {
   saveTriage(id: string, result: TriageResult): Promise<void>;
   listByCustomer(customerId: string): Promise<ServiceRequestWithId[]>;
   listOpen(): Promise<ServiceRequestWithId[]>;
+  listByProfessional(professionalId: string): Promise<ServiceRequestWithId[]>;
+  startWork(
+    id: string,
+    input: { professionalId: string; workStartedAt: string; slaDeadline: string; slaHours: number },
+  ): Promise<void>;
+  completeWork(id: string, input: { workCompletedAt: string }): Promise<void>;
 }

@@ -28,7 +28,11 @@ const openInLanus: ServiceRequestWithId = {
   },
 };
 
-function dependencies(open: ServiceRequestWithId[], profiles: Record<string, UserProfile>) {
+function dependencies(
+  open: ServiceRequestWithId[],
+  profiles: Record<string, UserProfile>,
+  ownJobs: ServiceRequestWithId[] = [],
+) {
   return {
     authenticate: async (request: Request) => {
       const role = request.headers.get("x-role");
@@ -38,6 +42,7 @@ function dependencies(open: ServiceRequestWithId[], profiles: Record<string, Use
     repository: {
       listByCustomer: async () => [],
       listOpen: async () => open,
+      listByProfessional: async () => ownJobs,
     },
     profileRepository: {
       get: async (userId: string) => profiles[userId] ?? null,
@@ -92,5 +97,35 @@ describe("GET /api/requests", () => {
     const data = (await response.json()) as { requests: ServiceRequestWithId[] };
 
     expect(data.requests).toHaveLength(0);
+  });
+
+  it("includes the professional's own in-progress jobs even if they no longer match trades/coverage", async () => {
+    const ownJob: ServiceRequestWithId = {
+      ...openInLanus,
+      id: "request-2",
+      status: "in_progress",
+      professionalId: "actor-1",
+      slaDeadline: "2026-08-12T12:00:00.000Z",
+    };
+    const handler = createRequestsGetHandler(
+      dependencies(
+        [],
+        {
+          "actor-1": {
+            userId: "actor-1",
+            role: "professional",
+            phone: "123456",
+            trades: ["electricidad"],
+            coverage: ["Lanús"],
+          },
+        },
+        [ownJob],
+      ),
+    );
+    const response = await handler(requestWithRole("professional"));
+    const data = (await response.json()) as { requests: ServiceRequestWithId[] };
+
+    expect(data.requests).toHaveLength(1);
+    expect(data.requests[0]).toMatchObject({ id: "request-2", status: "in_progress" });
   });
 });

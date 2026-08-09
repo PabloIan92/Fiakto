@@ -3,12 +3,22 @@
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/app/providers/AuthProvider";
+import { formatSlaStatus } from "@/app/components/sla-status";
 
 type RequestItem = {
   id: string;
   description: string;
-  status: "draft" | "triaging" | "open" | "quoted" | "accepted" | "closed";
+  status:
+    | "draft"
+    | "triaging"
+    | "open"
+    | "quoted"
+    | "accepted"
+    | "in_progress"
+    | "completed"
+    | "closed";
   location: { locality: string; province: string };
+  slaDeadline?: string;
 };
 
 const STATUS_LABELS: Record<RequestItem["status"], string> = {
@@ -17,6 +27,8 @@ const STATUS_LABELS: Record<RequestItem["status"], string> = {
   open: "Publicada, esperando presupuestos",
   quoted: "Con presupuestos",
   accepted: "Aceptada",
+  in_progress: "En reparación",
+  completed: "Completada",
   closed: "Cerrada",
 };
 
@@ -26,6 +38,8 @@ const STATUS_COLORS: Record<RequestItem["status"], string> = {
   open: "bg-blue-100 text-blue-800",
   quoted: "bg-purple-100 text-purple-800",
   accepted: "bg-green-100 text-green-800",
+  in_progress: "bg-orange-100 text-orange-800",
+  completed: "bg-emerald-100 text-emerald-800",
   closed: "bg-neutral-300 text-neutral-700",
 };
 
@@ -86,10 +100,28 @@ export default function MisSolicitudesPage() {
                 </span>
               </div>
               <p className="line-clamp-2 text-sm">{item.description}</p>
+              {item.status === "in_progress" && item.slaDeadline && (
+                <SlaBadge slaDeadline={item.slaDeadline} />
+              )}
             </li>
           ))}
         </ul>
       )}
     </main>
+  );
+}
+
+function SlaBadge({ slaDeadline }: { slaDeadline: string }) {
+  const [sla, setSla] = useState(() => formatSlaStatus(slaDeadline));
+
+  useEffect(() => {
+    const interval = setInterval(() => setSla(formatSlaStatus(slaDeadline)), 60_000);
+    return () => clearInterval(interval);
+  }, [slaDeadline]);
+
+  return (
+    <span className={`text-xs font-bold ${sla.overdue ? "text-[#b52f1c]" : "text-[#dc4b2f]"}`}>
+      {sla.label}
+    </span>
   );
 }

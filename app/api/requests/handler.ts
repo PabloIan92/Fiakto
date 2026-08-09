@@ -12,13 +12,13 @@ type AuditEvent = Parameters<typeof appendAuditEvent>[0];
 
 export type Dependencies = {
   authenticate(request: Request): Promise<Actor | null>;
-  repository: RequestRepository;
+  repository: Pick<RequestRepository, "create">;
   appendAudit(event: AuditEvent): Promise<unknown>;
 };
 
 export type GetDependencies = {
   authenticate(request: Request): Promise<Actor | null>;
-  repository: Pick<RequestRepository, "listByCustomer" | "listOpen">;
+  repository: Pick<RequestRepository, "listByCustomer" | "listOpen" | "listByProfessional">;
   profileRepository: ProfileRepository;
 };
 
@@ -95,7 +95,10 @@ export function createRequestsGetHandler(dependencies: GetDependencies) {
           },
         ),
       );
-      return Response.json({ requests: matching.map(withoutExactAddress) });
+      const ownJobs = await dependencies.repository.listByProfessional(actor.id);
+      return Response.json({
+        requests: [...matching, ...ownJobs].map(withoutExactAddress),
+      });
     }
 
     return Response.json({ requests: [] });
