@@ -11,6 +11,8 @@ export const TRADES = [
   "limpieza",
   "albanileria",
   "techista",
+  "refrigeracion",
+  "otro",
 ] as const;
 
 export const TRADE_LABELS: Record<(typeof TRADES)[number], string> = {
@@ -24,6 +26,8 @@ export const TRADE_LABELS: Record<(typeof TRADES)[number], string> = {
   limpieza: "Limpieza",
   albanileria: "Albañilería",
   techista: "Techista",
+  refrigeracion: "Refrigeración",
+  otro: "Otro",
 };
 
 export const TradeSchema = z.enum(TRADES);

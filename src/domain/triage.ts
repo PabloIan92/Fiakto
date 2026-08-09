@@ -1,15 +1,9 @@
 import { z } from "zod";
 
+import { TradeSchema } from "@/src/domain/profile";
+
 export const TriageResultSchema = z.object({
-  trade: z.enum([
-    "plomeria",
-    "electricidad",
-    "gas",
-    "albanileria",
-    "carpinteria",
-    "refrigeracion",
-    "otro",
-  ]),
+  trade: TradeSchema,
   summary: z.string().min(10).max(500),
   questions: z.array(z.string().min(5)).max(5),
   riskLevel: z.enum(["normal", "urgent", "emergency"]),

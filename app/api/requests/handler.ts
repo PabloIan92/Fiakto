@@ -81,11 +81,6 @@ export function createRequestsGetHandler(dependencies: GetDependencies) {
     if (actor.role === "professional") {
       const profile = await dependencies.profileRepository.get(actor.id);
       const open = await dependencies.repository.listOpen();
-      // Nota: TriageResult.trade (ver src/domain/triage.ts) usa un enum más
-      // acotado que TRADES (src/domain/profile.ts). El match puede fallar
-      // para oficios que todavía no existen en la clasificación del triage
-      // (ej. "cerrajeria"): queda como limitación conocida a resolver
-      // cuando se unifique el vocabulario de oficios.
       const matching = open.filter((item) =>
         canProfessionalViewRequest(
           {

@@ -41,7 +41,7 @@ describe("GeminiTriageProvider", () => {
 
   it("rejects a response containing an unknown trade", async () => {
     const client = new FakeGeminiClient(
-      validResponse.replace('"plomeria"', '"cerrajeria"'),
+      validResponse.replace('"plomeria"', '"inventado"'),
     );
     const provider = new GeminiTriageProvider(client);
 

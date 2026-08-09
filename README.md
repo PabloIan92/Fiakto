@@ -29,6 +29,11 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 - [x] **Dominio extendido**: `LocationSchema` con `lat`, `lng`, `displayRadiusKm`, `province`, `locality`, `exactAddress` (condicional, solo tras aceptación + pago).
 - [x] **UI formulario**: selector de provincia, localidad, radio de visibilidad; integración con subida de medios existente y flujo de triage automático.
 
+**Arreglos de esta vuelta (feedback de prueba con usuarios reales):**
+- [x] `/perfil` ya no se cuelga en "Cargando perfil…" sin sesión: redirige a `/login`.
+- [x] `/login` con el diseño brutalista del resto del sitio (`#181713`/`#dc4b2f`, bordes, sombra `8px_8px_0`).
+- [x] `TRADES` (perfil) y `TriageResult.trade` (triage por IA) unificados en un solo vocabulario (`src/domain/profile.ts`), agregando `refrigeracion` y `otro` al triage y sacando la lista duplicada que tenía `triage.ts`.
+
 **Perfiles, sesión y oportunidades (feedback de prueba con usuarios reales):**
 - [x] **Vista de profesional** (`/profesional/oportunidades`, listado + detalle): filtra por oficio/cobertura vía `canProfessionalViewRequest`, siempre oculta `exactAddress`, muestra `ApproximateMap`.
 - [x] **Perfil de cliente** (`/perfil`): domicilio con mapa exacto (marcador preciso, reusa `MapPicker`) y teléfono. Nuevo `UserProfileSchema` + `FirestoreProfileRepository`.
@@ -40,9 +45,6 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 
 ### Prioridad alta — rematar lo de esta vuelta
 
-- [ ] `/perfil` se queda colgado en "Cargando perfil…" cuando no hay sesión — debería redirigir a `/login`.
-- [ ] `/login` usa estilos default del navegador, no el diseño brutalista (`#181713`/`#dc4b2f`, bordes, sombras `8px_8px_0`) del resto del sitio.
-- [ ] Unificar el vocabulario de `TRADES` (perfil de profesional) con el enum `TriageResult.trade` del triage por IA — hoy son dos listas separadas (marcado en el código como limitación conocida).
 - [ ] `npm run build` de producción sigue roto por un bug abierto de Next.js 16.x (`InvariantError` al prerenderizar `/_global-error`, confirmado independiente de next-pwa/webpack/turbopack: [vercel/next.js#87719](https://github.com/vercel/next.js/issues/87719)). `npm run dev` funciona normal; bloquea publicar staging/producción hasta que Next.js lo arregle o se baje a Next 15.
 - [ ] Cargar Firebase real (ver `.env.example` pendiente más abajo) para poder probar el flujo de login/perfil end-to-end — hoy sin credenciales la app funciona pero como "visitante no logueado" en todas partes.
 

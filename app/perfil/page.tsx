@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/app/providers/AuthProvider";
 import { TRADES, TRADE_LABELS, type UserProfile } from "@/src/domain/profile";
@@ -35,6 +36,7 @@ const EMPTY_FORM: FormState = {
 };
 
 export default function PerfilPage() {
+  const router = useRouter();
   const { user, role, loading: authLoading } = useAuth();
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
@@ -42,7 +44,11 @@ export default function PerfilPage() {
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (authLoading) return;
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
     (async () => {
       const token = await user.getIdToken();
       const response = await fetch("/api/profile", {
@@ -63,7 +69,7 @@ export default function PerfilPage() {
       }
       setLoading(false);
     })();
-  }, [user]);
+  }, [user, authLoading, router]);
 
   async function handleSubmit() {
     if (!user) return;
@@ -107,20 +113,10 @@ export default function PerfilPage() {
     }));
   }
 
-  if (authLoading || loading) {
+  if (authLoading || loading || !user) {
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">
         <p>Cargando perfil…</p>
-      </main>
-    );
-  }
-
-  if (!user) {
-    return (
-      <main className="mx-auto max-w-2xl px-6 py-12">
-        <p>
-          Iniciá sesión para ver tu perfil. <a href="/login" className="underline">Ir a login</a>
-        </p>
       </main>
     );
   }

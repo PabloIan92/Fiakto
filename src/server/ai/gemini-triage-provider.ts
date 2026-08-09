@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
+import { TRADES } from "@/src/domain/profile";
 import { TriageResultSchema } from "@/src/domain/triage";
 import type { TriageProvider } from "@/src/server/ai/triage-provider";
 
@@ -9,10 +10,12 @@ interface GeminiClient {
   };
 }
 
+const TRADE_ENUM = TRADES.map((trade) => `"${trade}"`).join(" | ");
+
 const SYSTEM_INSTRUCTION = `You triage home-service requests for Fiakto in Argentina.
 Return only JSON with exactly this shape:
 {
-  "trade": "plomeria" | "electricidad" | "gas" | "albanileria" | "carpinteria" | "refrigeracion" | "otro",
+  "trade": ${TRADE_ENUM},
   "summary": string (10-500 characters),
   "questions": string[] (up to 5),
   "riskLevel": "normal" | "urgent" | "emergency",
