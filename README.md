@@ -63,10 +63,10 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 ### Prioridad media — preparar staging
 
 - [ ] Crear `.env.example` sin secretos reales.
-- [ ] Añadir `apphosting.yaml` y configurar Firebase App Hosting.
-- [ ] Guardar `GEMINI_API_KEY` en Secret Manager.
+- [x] Añadir `apphosting.yaml`/`firebase.json` y configurar Firebase App Hosting (backend `fiakto-staging`, deploy desde codigo local via `firebase deploy --only apphosting` — todavia sin repo de GitHub conectado, asi que no hay auto-deploy en cada push).
+- [x] Guardar `GEMINI_API_KEY` en Secret Manager (ya existia el secret; se le otorgo acceso al backend `fiakto-staging` y se referencia en `apphosting.yaml`).
 - [ ] Configurar Firebase Authentication, Firestore y Cloud Storage.
-- [ ] Publicar URL de staging (el build ya funciona, ver arriba).
+- [x] Publicar URL de staging: https://fiakto-staging--fiakto.us-central1.hosted.app/ (rollout manual hecho el 2026-08-09, refleja el commit `e48081f`).
 - [ ] Verificar que los logs no incluyan tokens, documentos ni domicilios.
 
 ### Legal / compliance (pendiente, antes de exponer la app a usuarios reales)
