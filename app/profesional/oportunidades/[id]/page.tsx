@@ -16,7 +16,9 @@ const ApproximateMap = dynamic(
 type OpportunityDetail = {
   id: string;
   description: string;
-  location: { lat: number; lng: number; displayRadiusKm: number; locality: string; province: string };
+  // Puede faltar en datos viejos que se guardaron antes de que la ubicacion
+  // fuera obligatoria en el schema (ver ServiceRequestSchema).
+  location?: { lat: number; lng: number; displayRadiusKm: number; locality: string; province: string };
   status: "open" | "in_progress" | "completed";
   slaHours?: number;
   slaDeadline?: string;
@@ -100,19 +102,25 @@ export default function OportunidadDetallePage() {
     <main className="mx-auto max-w-2xl px-6 py-12">
       <h1 className="mb-2 text-2xl font-bold">Detalle de la solicitud</h1>
       <p className="mb-4 text-sm text-[#777166]">
-        {opportunity.location.locality}, {opportunity.location.province}
+        {opportunity.location
+          ? `${opportunity.location.locality}, ${opportunity.location.province}`
+          : "Ubicación no disponible"}
       </p>
       <p className="mb-6">{opportunity.description}</p>
 
-      <h2 className="mb-2 text-lg font-semibold">Zona aproximada</h2>
-      <p className="mb-3 text-sm text-[#777166]">
-        No vemos la dirección exacta hasta aceptar el trabajo — así podés evaluar si te
-        conviene por la zona antes de comprometerte.
-      </p>
-      <ApproximateMap
-        center={{ lat: opportunity.location.lat, lng: opportunity.location.lng }}
-        radiusKm={opportunity.location.displayRadiusKm}
-      />
+      {opportunity.location && (
+        <>
+          <h2 className="mb-2 text-lg font-semibold">Zona aproximada</h2>
+          <p className="mb-3 text-sm text-[#777166]">
+            No vemos la dirección exacta hasta aceptar el trabajo — así podés evaluar si te
+            conviene por la zona antes de comprometerte.
+          </p>
+          <ApproximateMap
+            center={{ lat: opportunity.location.lat, lng: opportunity.location.lng }}
+            radiusKm={opportunity.location.displayRadiusKm}
+          />
+        </>
+      )}
 
       <div className="mt-8 border-t border-[#181713]/15 pt-6">
         {opportunity.status === "open" && (

@@ -8,7 +8,9 @@ import { formatSlaStatus } from "@/app/components/sla-status";
 type Opportunity = {
   id: string;
   description: string;
-  location: { locality: string; province: string };
+  // Puede faltar en datos viejos que se guardaron antes de que la ubicacion
+  // fuera obligatoria en el schema (ver ServiceRequestSchema).
+  location?: { locality: string; province: string };
   status: "open" | "in_progress" | "completed";
   slaDeadline?: string;
 };
@@ -68,7 +70,9 @@ export default function OportunidadesPage() {
                 <a href={`/profesional/oportunidades/${item.id}`} className="flex flex-col gap-2">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm text-[#777166]">
-                      {item.location.locality}, {item.location.province}
+                      {item.location
+                        ? `${item.location.locality}, ${item.location.province}`
+                        : "Ubicación no disponible"}
                     </span>
                     <span className="w-fit rounded-full border border-[#181713]/20 px-3 py-1 text-xs font-semibold">
                       {STATUS_LABELS[item.status]}

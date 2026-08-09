@@ -17,7 +17,9 @@ type RequestItem = {
     | "in_progress"
     | "completed"
     | "closed";
-  location: { locality: string; province: string };
+  // Puede faltar en datos viejos que se guardaron antes de que la ubicacion
+  // fuera obligatoria en el schema (ver ServiceRequestSchema).
+  location?: { locality: string; province: string };
   slaDeadline?: string;
 };
 
@@ -97,7 +99,9 @@ export default function MisSolicitudesPage() {
                   {STATUS_LABELS[item.status]}
                 </span>
                 <span className="text-sm text-[#777166]">
-                  {item.location.locality}, {item.location.province}
+                  {item.location
+                    ? `${item.location.locality}, ${item.location.province}`
+                    : "Ubicación no disponible"}
                 </span>
               </div>
               <p className="line-clamp-2 text-sm">{item.description}</p>
