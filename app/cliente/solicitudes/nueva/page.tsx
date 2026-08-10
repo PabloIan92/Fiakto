@@ -138,7 +138,11 @@ export default function NewRequestPage() {
             </label>
 
             <label htmlFor="location" className="block">
-              <span className="mb-2 block text-sm font-bold">¿Dónde es el trabajo?</span>
+              <span className="mb-1 block text-sm font-bold">¿Dónde es el trabajo?</span>
+              <span className="mb-2 block text-xs text-[#777166]">
+                Hacé click en el mapa para marcar el lugar (después podés arrastrar el marcador
+                para ajustarlo).
+              </span>
               <MapPicker
                 value={location}
                 onChange={setLocation}

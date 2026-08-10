@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ChangeEvent } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 
@@ -171,8 +172,14 @@ export default function PerfilPage() {
     );
   }
 
+  const backHref = role === "professional" ? "/profesional/oportunidades" : "/cliente/solicitudes";
+  const backLabel = role === "professional" ? "Oportunidades" : "Mis solicitudes";
+
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
+      <Link href={backHref} className="mb-4 inline-block text-sm font-medium underline">
+        ← Volver a {backLabel}
+      </Link>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Mi perfil</h1>
@@ -245,6 +252,10 @@ export default function PerfilPage() {
                 className="rounded border border-[#181713]/20 px-3 py-2"
               />
             </label>
+            <p className="text-sm font-medium">
+              Hacé click en el mapa para marcar tu ubicación exacta (después podés arrastrar el
+              marcador para ajustarla).
+            </p>
             <MapPicker
               value={form.lat !== null && form.lng !== null ? { lat: form.lat, lng: form.lng } : null}
               onChange={({ lat, lng }) => setForm((prev) => ({ ...prev, lat, lng }))}
