@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { type ChangeEvent, type FormEvent, useState } from "react";
 
 import { useRoleGuard } from "@/app/providers/AuthProvider";
@@ -23,6 +24,7 @@ const MAX_FILES = 6;
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 export default function NewRequestPage() {
+  const router = useRouter();
   const { ready } = useRoleGuard("customer", "/profesional/oportunidades");
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState("");
@@ -78,7 +80,27 @@ export default function NewRequestPage() {
         media: [],
       }),
     });
-    setStatus(response.ok ? "done" : "error");
+    if (!response.ok) {
+      setStatus("error");
+      return;
+    }
+
+    const { id } = (await response.json()) as { id: string };
+    // Dispara el triage (Gemini) para esta solicitud recien creada. Antes
+    // este paso nunca se llamaba desde el frontend: la solicitud quedaba
+    // creada pero en "draft" para siempre, porque nada volvia a tocar el
+    // documento. Si esta llamada falla (red o el propio endpoint), la
+    // solicitud sigue existiendo en "draft" y el usuario puede reintentar
+    // el analisis desde /cliente/solicitudes.
+    try {
+      await fetch(`/api/requests/${id}/triage`, { method: "POST" });
+    } catch {
+      // Fallo de red al llamar al triage: seguimos igual, ver comentario
+      // arriba.
+    }
+
+    setStatus("done");
+    router.push("/cliente/solicitudes");
   }
 
   if (!ready) {

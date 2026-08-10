@@ -30,13 +30,28 @@ export function createTriagePostHandler(dependencies: Dependencies) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const mediaUrls = await dependencies.signMedia(
-      serviceRequest.media.map((media) => media.storagePath),
-    );
-    const triage = await dependencies.triageProvider.triage({
-      description: serviceRequest.description,
-      mediaUrls,
-    });
+    let triage;
+    try {
+      const mediaUrls = await dependencies.signMedia(
+        serviceRequest.media.map((media) => media.storagePath),
+      );
+      triage = await dependencies.triageProvider.triage({
+        description: serviceRequest.description,
+        mediaUrls,
+      });
+    } catch (error) {
+      // Sin este log, un fallo del proveedor de IA (Gemini) o de la firma
+      // de URLs de medios dejaba la solicitud sin ningun rastro en Cloud
+      // Logging de por que el triage nunca se guardo. El documento queda
+      // como estaba (normalmente "draft") y el cliente puede reintentar
+      // desde /cliente/solicitudes, pero necesitamos poder diagnosticar la
+      // causa real si vuelve a fallar.
+      console.error(
+        `[triage] request ${id} failed: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : error,
+      );
+      return Response.json({ error: "Triage failed" }, { status: 502 });
+    }
     const mustStop = triage.riskLevel === "emergency";
 
     await dependencies.repository.saveTriage(id, triage, { open: !mustStop });

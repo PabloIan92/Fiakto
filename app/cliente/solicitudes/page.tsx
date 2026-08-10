@@ -50,22 +50,45 @@ export default function MisSolicitudesPage() {
   const { user } = useAuth();
   const { ready } = useRoleGuard("customer", "/profesional/oportunidades");
   const [requests, setRequests] = useState<RequestItem[] | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [retryError, setRetryError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready || !user) return;
-    (async () => {
+    void loadRequests(user);
+  }, [user]);
+
+  async function loadRequests(currentUser: NonNullable<typeof user>) {
+    const token = await currentUser.getIdToken();
+    const response = await fetch("/api/requests", {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (response.ok) {
+      const data = (await response.json()) as { requests: RequestItem[] };
+      setRequests(data.requests);
+    } else {
+      setRequests([]);
+    }
+  }
+
+  async function retryAnalysis(id: string) {
+    if (!user) return;
+    setRetryingId(id);
+    setRetryError(null);
+    try {
       const token = await user.getIdToken();
-      const response = await fetch("/api/requests", {
+      const response = await fetch(`/api/requests/${id}/triage`, {
+        method: "POST",
         headers: { authorization: `Bearer ${token}` },
       });
-      if (response.ok) {
-        const data = (await response.json()) as { requests: RequestItem[] };
-        setRequests(data.requests);
-      } else {
-        setRequests([]);
+      if (!response.ok) {
+        setRetryError("No pudimos analizar la solicitud. Probá de nuevo en un momento.");
       }
-    })();
-  }, [user]);
+      await loadRequests(user);
+    } finally {
+      setRetryingId(null);
+    }
+  }
 
   if (!ready || requests === null) {
     return (
@@ -88,6 +111,12 @@ export default function MisSolicitudesPage() {
           Nueva solicitud
         </a>
       </div>
+
+      {retryError && (
+        <p role="alert" className="mb-4 text-sm font-semibold text-[#b52f1c]">
+          {retryError}
+        </p>
+      )}
 
       {requests.length === 0 ? (
         <p className="text-[#777166]">Todavía no publicaste ninguna solicitud.</p>
@@ -113,6 +142,21 @@ export default function MisSolicitudesPage() {
               <p className="line-clamp-2 text-sm">{item.description}</p>
               {item.status === "in_progress" && item.slaDeadline && (
                 <SlaBadge slaDeadline={item.slaDeadline} />
+              )}
+              {item.status === "draft" && (
+                <div className="mt-1 flex items-center gap-3">
+                  <span className="text-xs text-[#777166]">
+                    El análisis con IA no se completó todavía.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => retryAnalysis(item.id)}
+                    disabled={retryingId === item.id}
+                    className="rounded bg-[#181713] px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {retryingId === item.id ? "Analizando…" : "Reintentar análisis"}
+                  </button>
+                </div>
               )}
             </li>
           ))}

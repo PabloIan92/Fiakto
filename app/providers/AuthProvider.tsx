@@ -38,11 +38,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!auth) return;
+
+    // Bug conocido de carga en frio: en una navegacion "dura" (URL directa
+    // o F5, no un link interno de Next) el SDK de Firebase Auth a veces se
+    // queda esperando indefinidamente la restauracion de persistencia
+    // desde IndexedDB y onIdTokenChanged nunca llega a disparar ni una vez
+    // (ni siquiera con nextUser=null) — sin este timeout, "loading" se
+    // queda en true para siempre y cualquier pantalla que dependa de
+    // useAuth/useRoleGuard se cuelga en "Cargando..." sin ningun pedido de
+    // red ni error en consola. Si el listener nunca resuelve, lo tratamos
+    // como "no logueado": useRoleGuard ya redirige a /login en ese caso.
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (!settled) setLoading(false);
+    }, 6000);
+
     // onIdTokenChanged dispara al cargar la página (Firebase recuerda la
     // sesión entre visitas por defecto) y cada vez que el SDK renueva el
     // token en segundo plano: así la cookie __session queda siempre al
     // día sin pedirle al usuario que vuelva a loguearse.
-    return onIdTokenChanged(auth, async (nextUser) => {
+    const unsubscribe = onIdTokenChanged(auth, async (nextUser) => {
+      settled = true;
+      clearTimeout(timeout);
       setUser(nextUser);
       setLoading(false);
       if (!nextUser) {
@@ -68,6 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setRole(await readRole(nextUser));
     });
+
+    return () => {
+      clearTimeout(timeout);
+      unsubscribe();
+    };
   }, []);
 
   return (

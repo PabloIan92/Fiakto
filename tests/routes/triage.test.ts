@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { ServiceRequest } from "@/src/domain/requests";
 import type { TriageResult } from "@/src/domain/triage";
@@ -85,5 +85,24 @@ describe("POST /api/requests/:id/triage", () => {
     expect(saved[0]?.open).toBe(false);
     expect(body).toMatchObject({ mustStop: true, triage: emergency });
     expect(body.guidance).toBeTruthy();
+  });
+
+  it("logs and returns 502 instead of swallowing a triage provider failure", async () => {
+    const { deps, saved } = dependencies();
+    deps.triageProvider = {
+      triage: async () => {
+        throw new Error("Gemini quota exceeded");
+      },
+    };
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const response = await call(createTriagePostHandler(deps));
+
+    expect(response.status).toBe(502);
+    expect(saved).toHaveLength(0);
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(consoleError.mock.calls[0]?.[0]).toContain("Gemini quota exceeded");
+
+    consoleError.mockRestore();
   });
 });
