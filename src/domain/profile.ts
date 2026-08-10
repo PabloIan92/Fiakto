@@ -50,7 +50,32 @@ export const UserProfileSchema = z.object({
   // Ruta en Cloud Storage de la foto de rostro del profesional (no una URL:
   // se firma al leer, ver src/server/media.ts).
   photoPath: z.string().trim().min(1).optional(),
+  // YYYY-MM-DD. Optional a nivel de schema para no romper la lectura de
+  // perfiles guardados antes de este campo — el PUT handler exige que
+  // esté presente y que la persona sea mayor de edad antes de guardar
+  // (ver MIN_ADULT_AGE_YEARS más abajo).
+  birthDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato de fecha inválido")
+    .optional(),
 });
 
 export type UserProfile = z.infer<typeof UserProfileSchema>;
 export type ProfileLocation = z.infer<typeof ProfileLocationSchema>;
+
+// Argentina: mayoría de edad a los 18 años (art. 25 Código Civil y Comercial).
+export const MIN_ADULT_AGE_YEARS = 18;
+
+export function calculateAge(birthDate: string, now: Date): number {
+  const [year, month, day] = birthDate.split("-").map(Number);
+  let age = now.getUTCFullYear() - year;
+  const birthdayAlreadyHappenedThisYear =
+    now.getUTCMonth() + 1 > month ||
+    (now.getUTCMonth() + 1 === month && now.getUTCDate() >= day);
+  if (!birthdayAlreadyHappenedThisYear) age -= 1;
+  return age;
+}
+
+export function isAdult(birthDate: string, now: Date): boolean {
+  return calculateAge(birthDate, now) >= MIN_ADULT_AGE_YEARS;
+}

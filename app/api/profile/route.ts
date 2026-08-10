@@ -7,6 +7,7 @@ const dependencies = {
   authenticate: authenticateRequest,
   repository: new FirestoreProfileRepository(),
   signPhoto: signProfilePhoto,
+  now: () => new Date(),
 };
 
 export const GET = createProfileGetHandler(dependencies);

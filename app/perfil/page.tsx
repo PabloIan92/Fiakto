@@ -19,6 +19,7 @@ const MapPicker = dynamic(
 
 type FormState = {
   phone: string;
+  birthDate: string;
   province: string;
   locality: string;
   exactAddress: string;
@@ -30,6 +31,7 @@ type FormState = {
 
 const EMPTY_FORM: FormState = {
   phone: "",
+  birthDate: "",
   province: "",
   locality: "",
   exactAddress: "",
@@ -58,6 +60,7 @@ export default function PerfilPage() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState("");
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -74,6 +77,7 @@ export default function PerfilPage() {
         const profile = (await response.json()) as UserProfile & { photoUrl?: string };
         setForm({
           phone: profile.phone ?? "",
+          birthDate: profile.birthDate ?? "",
           province: profile.location?.province ?? "",
           locality: profile.location?.locality ?? "",
           exactAddress: profile.location?.exactAddress ?? "",
@@ -126,6 +130,7 @@ export default function PerfilPage() {
     if (!user) return;
     setSaving(true);
     setSavedAt(null);
+    setSaveError("");
     const token = await user.getIdToken();
     const location =
       form.lat !== null && form.lng !== null && form.exactAddress && form.province && form.locality
@@ -138,11 +143,12 @@ export default function PerfilPage() {
           }
         : undefined;
 
-    await fetch("/api/profile", {
+    const response = await fetch("/api/profile", {
       method: "PUT",
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
       body: JSON.stringify({
         phone: form.phone,
+        birthDate: form.birthDate,
         location,
         trades: form.trades,
         coverage: form.coverage
@@ -152,6 +158,11 @@ export default function PerfilPage() {
       }),
     });
     setSaving(false);
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      setSaveError(body?.error ?? "No pudimos guardar tu perfil. Revisá los datos e intentá de nuevo.");
+      return;
+    }
     setSavedAt(Date.now());
   }
 
@@ -211,6 +222,21 @@ export default function PerfilPage() {
             onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
             className="rounded border border-[#181713]/20 px-3 py-2"
           />
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span>Fecha de nacimiento *</span>
+          <input
+            type="date"
+            required
+            value={form.birthDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(event) => setForm((prev) => ({ ...prev, birthDate: event.target.value }))}
+            className="w-fit rounded border border-[#181713]/20 px-3 py-2"
+          />
+          <span className="text-xs text-[#777166]">
+            Fiakto es solo para mayores de 18 años.
+          </span>
         </label>
 
         {role === "customer" && (
@@ -341,6 +367,11 @@ export default function PerfilPage() {
           {saving ? "Guardando…" : "Guardar"}
         </button>
         {savedAt && <p className="text-sm text-green-700">Perfil guardado.</p>}
+        {saveError && (
+          <p role="alert" className="text-sm text-red-600">
+            {saveError}
+          </p>
+        )}
       </section>
     </main>
   );

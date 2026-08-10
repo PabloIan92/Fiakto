@@ -1,4 +1,4 @@
-import { UserProfileSchema } from "@/src/domain/profile";
+import { isAdult, MIN_ADULT_AGE_YEARS, UserProfileSchema } from "@/src/domain/profile";
 import type { Actor } from "@/src/server/auth";
 import type { ProfileRepository } from "@/src/server/repositories/profile-repository";
 
@@ -6,6 +6,7 @@ export type Dependencies = {
   authenticate(request: Request): Promise<Actor | null>;
   repository: ProfileRepository;
   signPhoto?(storagePath: string): Promise<string>;
+  now?(): Date;
 };
 
 export function createProfileGetHandler(dependencies: Dependencies) {
@@ -57,6 +58,24 @@ export function createProfilePutHandler(dependencies: Dependencies) {
       return Response.json(
         { error: "Invalid profile", issues: parsed.error.issues },
         { status: 400 },
+      );
+    }
+
+    if (!parsed.data.birthDate) {
+      return Response.json(
+        { error: "Falta la fecha de nacimiento" },
+        { status: 400 },
+      );
+    }
+
+    const now = (dependencies.now ?? (() => new Date()))();
+    if (!isAdult(parsed.data.birthDate, now)) {
+      return Response.json(
+        {
+          error: `Fiakto es solo para mayores de ${MIN_ADULT_AGE_YEARS} años`,
+          minorBlocked: true,
+        },
+        { status: 403 },
       );
     }
 

@@ -6,6 +6,9 @@ import {
   createProfilePutHandler,
 } from "@/app/api/profile/handler";
 
+const FIXED_NOW = new Date("2026-06-15T00:00:00Z");
+const ADULT_BIRTH_DATE = "2000-01-01";
+
 function dependencies(actor: { id: string; role: "customer" | "professional" | "admin" } | null) {
   const stored = new Map<string, UserProfile>();
   const key = (userId: string, role: string) => `${userId}_${role}`;
@@ -20,6 +23,7 @@ function dependencies(actor: { id: string; role: "customer" | "professional" | "
           stored.set(key(profile.userId, profile.role), profile);
         },
       },
+      now: () => FIXED_NOW,
     },
   };
 }
@@ -59,6 +63,7 @@ describe("PUT /api/profile", () => {
         method: "PUT",
         body: JSON.stringify({
           phone: "+54 11 5555-5555",
+          birthDate: ADULT_BIRTH_DATE,
           trades: ["plomeria"],
           location: {
             lat: -34.6,
@@ -81,7 +86,11 @@ describe("PUT /api/profile", () => {
     const response = await createProfilePutHandler(deps)(
       new Request("http://localhost/api/profile", {
         method: "PUT",
-        body: JSON.stringify({ phone: "123456", trades: ["cerrajeria", "plomeria"] }),
+        body: JSON.stringify({
+          phone: "123456",
+          birthDate: ADULT_BIRTH_DATE,
+          trades: ["cerrajeria", "plomeria"],
+        }),
       }),
     );
 
@@ -94,9 +103,51 @@ describe("PUT /api/profile", () => {
     const response = await createProfilePutHandler(deps)(
       new Request("http://localhost/api/profile", {
         method: "PUT",
-        body: JSON.stringify({ phone: "a" }),
+        body: JSON.stringify({ phone: "a", birthDate: ADULT_BIRTH_DATE }),
       }),
     );
     expect(response.status).toBe(400);
+  });
+
+  it("rejects saving without a birth date", async () => {
+    const { deps, stored } = dependencies({ id: "customer-1", role: "customer" });
+    const response = await createProfilePutHandler(deps)(
+      new Request("http://localhost/api/profile", {
+        method: "PUT",
+        body: JSON.stringify({ phone: "123456" }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(stored.has("customer-1_customer")).toBe(false);
+  });
+
+  it("blocks someone under 18 and does not persist the profile", async () => {
+    const { deps, stored } = dependencies({ id: "customer-1", role: "customer" });
+    const response = await createProfilePutHandler(deps)(
+      new Request("http://localhost/api/profile", {
+        method: "PUT",
+        // FIXED_NOW is 2026-06-15; this birth date makes them 17.
+        body: JSON.stringify({ phone: "123456", birthDate: "2008-08-10" }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({ minorBlocked: true });
+    expect(stored.has("customer-1_customer")).toBe(false);
+  });
+
+  it("allows someone who turns 18 exactly today", async () => {
+    const { deps, stored } = dependencies({ id: "customer-1", role: "customer" });
+    const response = await createProfilePutHandler(deps)(
+      new Request("http://localhost/api/profile", {
+        method: "PUT",
+        // FIXED_NOW is 2026-06-15; this birth date makes them exactly 18 today.
+        body: JSON.stringify({ phone: "123456", birthDate: "2008-06-15" }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(stored.get("customer-1_customer")?.birthDate).toBe("2008-06-15");
   });
 });

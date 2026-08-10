@@ -3,9 +3,10 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { type ChangeEvent, type FormEvent, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 
-import { useRoleGuard } from "@/app/providers/AuthProvider";
+import { useAuth, useRoleGuard } from "@/app/providers/AuthProvider";
+import { isAdult } from "@/src/domain/profile";
 
 // Leaflet toca `window` al importarse: solo puede correr en el cliente.
 const MapPicker = dynamic(
@@ -25,6 +26,7 @@ const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 export default function NewRequestPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const { ready } = useRoleGuard("customer", "/profesional/oportunidades");
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState("");
@@ -33,6 +35,38 @@ export default function NewRequestPage() {
   const [province, setProvince] = useState("Buenos Aires");
   const [locality, setLocality] = useState("");
   const [radiusKm, setRadiusKm] = useState(3);
+  const [blockedMinor, setBlockedMinor] = useState(false);
+
+  // Si el cliente ya guardó su domicilio en /perfil, precargamos el mapa,
+  // la localidad y la provincia con eso en vez de hacerlo repetir los tres
+  // datos a mano en cada solicitud nueva. Sigue pudiendo mover el marcador
+  // o cambiar el texto si el trabajo es en otro lado. De paso, si ya
+  // guardó una fecha de nacimiento que lo marca como menor, bloqueamos la
+  // publicación de solicitudes acá también (el guardado del perfil ya lo
+  // impide, pero esto cubre a alguien que guardó el perfil antes de que
+  // este chequeo existiera).
+  useEffect(() => {
+    if (!ready || !user) return;
+    (async () => {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/profile", {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return;
+      const profile = (await response.json()) as {
+        location?: { lat: number; lng: number; province: string; locality: string };
+        birthDate?: string;
+      };
+      if (profile.birthDate && !isAdult(profile.birthDate, new Date())) {
+        setBlockedMinor(true);
+        return;
+      }
+      if (!profile.location) return;
+      setLocation({ lat: profile.location.lat, lng: profile.location.lng });
+      setProvince(profile.location.province);
+      setLocality(profile.location.locality);
+    })();
+  }, [ready, user]);
 
   function handleFiles(event: ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(event.target.files ?? []);
@@ -107,6 +141,17 @@ export default function NewRequestPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#f3efe6] text-[#181713]">
         <p>Cargando…</p>
+      </main>
+    );
+  }
+
+  if (blockedMinor) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f3efe6] px-6 text-[#181713]">
+        <p role="alert" className="max-w-md text-center text-base font-semibold">
+          Fiakto es solo para mayores de 18 años. No podés publicar solicitudes con la fecha de
+          nacimiento que tenés guardada en tu perfil.
+        </p>
       </main>
     );
   }

@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/app/providers/AuthProvider", () => ({
   useRoleGuard: () => ({ ready: true }),
+  useAuth: () => ({ user: null }),
 }));
 
 import NewRequestPage from "@/app/cliente/solicitudes/nueva/page";

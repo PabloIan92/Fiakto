@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth, useRoleGuard } from "@/app/providers/AuthProvider";
 import { formatSlaStatus } from "@/app/components/sla-status";
 import { AppHeader } from "@/app/components/AppHeader";
+import { isAdult } from "@/src/domain/profile";
 
 type Opportunity = {
   id: string;
@@ -26,22 +27,45 @@ export default function OportunidadesPage() {
   const { user } = useAuth();
   const { ready } = useRoleGuard("professional", "/cliente/solicitudes");
   const [opportunities, setOpportunities] = useState<Opportunity[] | null>(null);
+  const [blockedMinor, setBlockedMinor] = useState(false);
 
   useEffect(() => {
     if (!ready || !user) return;
     (async () => {
       const token = await user.getIdToken();
-      const response = await fetch("/api/requests", {
-        headers: { authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = (await response.json()) as { requests: Opportunity[] };
+      const [profileResponse, requestsResponse] = await Promise.all([
+        fetch("/api/profile", { headers: { authorization: `Bearer ${token}` } }),
+        fetch("/api/requests", { headers: { authorization: `Bearer ${token}` } }),
+      ]);
+      if (profileResponse.ok) {
+        const profile = (await profileResponse.json()) as { birthDate?: string };
+        if (profile.birthDate && !isAdult(profile.birthDate, new Date())) {
+          setBlockedMinor(true);
+          return;
+        }
+      }
+      if (requestsResponse.ok) {
+        const data = (await requestsResponse.json()) as { requests: Opportunity[] };
         setOpportunities(data.requests);
       } else {
         setOpportunities([]);
       }
     })();
   }, [user]);
+
+  if (blockedMinor) {
+    return (
+      <>
+        <AppHeader />
+        <main className="mx-auto flex min-h-[50vh] max-w-3xl items-center px-6 py-12">
+          <p role="alert" className="text-base font-semibold">
+            Fiakto es solo para mayores de 18 años. No podés ofrecer trabajos con la fecha de
+            nacimiento que tenés guardada en tu perfil.
+          </p>
+        </main>
+      </>
+    );
+  }
 
   if (!ready || opportunities === null) {
     return (
