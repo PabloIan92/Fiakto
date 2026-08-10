@@ -36,7 +36,7 @@ describe("GeminiTriageProvider", () => {
 
     expect(result.trade).toBe("plomeria");
     expect(result.referenceRangeArs).toBeNull();
-    expect(client.lastRequest).toMatchObject({ model: "gemini-2.5-flash" });
+    expect(client.lastRequest).toMatchObject({ model: "gemini-flash-latest" });
   });
 
   it("rejects a response containing an unknown trade", async () => {

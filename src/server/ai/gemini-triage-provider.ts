@@ -37,7 +37,7 @@ export class GeminiTriageProvider implements TriageProvider {
 
   async triage(input: { description: string; mediaUrls: string[] }) {
     const response = await this.client.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-flash-latest",
       contents: [
         `Customer description: ${input.description}`,
         `Signed media URLs: ${input.mediaUrls.length ? input.mediaUrls.join(", ") : "none"}`,
