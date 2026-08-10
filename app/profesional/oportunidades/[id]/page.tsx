@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 
 import { useAuth, useRoleGuard } from "@/app/providers/AuthProvider";
 import { formatSlaStatus } from "@/app/components/sla-status";
+import { AppHeader } from "@/app/components/AppHeader";
 
 // Leaflet toca `window` al importarse: solo puede correr en el cliente.
 const ApproximateMap = dynamic(
@@ -76,29 +77,40 @@ export default function OportunidadDetallePage() {
 
   if (!ready || status === "loading") {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12">
-        <p>Cargando…</p>
-      </main>
+      <>
+        <AppHeader />
+        <main className="mx-auto max-w-2xl px-6 py-12">
+          <p>Cargando…</p>
+        </main>
+      </>
     );
   }
 
   if (status === "forbidden") {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12">
-        <p>Esta oportunidad no coincide con tus oficios o zona de cobertura.</p>
-      </main>
+      <>
+        <AppHeader />
+        <main className="mx-auto max-w-2xl px-6 py-12">
+          <p>Esta oportunidad no coincide con tus oficios o zona de cobertura.</p>
+        </main>
+      </>
     );
   }
 
   if (status === "not-found" || !opportunity) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12">
-        <p>No encontramos esta solicitud.</p>
-      </main>
+      <>
+        <AppHeader />
+        <main className="mx-auto max-w-2xl px-6 py-12">
+          <p>No encontramos esta solicitud.</p>
+        </main>
+      </>
     );
   }
 
   return (
+    <>
+    <AppHeader />
     <main className="mx-auto max-w-2xl px-6 py-12">
       <h1 className="mb-2 text-2xl font-bold">Detalle de la solicitud</h1>
       <p className="mb-4 text-sm text-[#777166]">
@@ -158,6 +170,7 @@ export default function OportunidadDetallePage() {
         )}
       </div>
     </main>
+    </>
   );
 }
 

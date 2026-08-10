@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth, useRoleGuard } from "@/app/providers/AuthProvider";
 import { formatSlaStatus } from "@/app/components/sla-status";
+import { AppHeader } from "@/app/components/AppHeader";
 
 type RequestItem = {
   id: string;
@@ -68,13 +69,18 @@ export default function MisSolicitudesPage() {
 
   if (!ready || requests === null) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
-        <p>Cargando tus solicitudes…</p>
-      </main>
+      <>
+        <AppHeader />
+        <main className="mx-auto max-w-3xl px-6 py-12">
+          <p>Cargando tus solicitudes…</p>
+        </main>
+      </>
     );
   }
 
   return (
+    <>
+    <AppHeader />
     <main className="mx-auto max-w-3xl px-6 py-12">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Mis solicitudes</h1>
@@ -113,6 +119,7 @@ export default function MisSolicitudesPage() {
         </ul>
       )}
     </main>
+    </>
   );
 }
 

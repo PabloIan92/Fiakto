@@ -94,9 +94,12 @@ export default function NewRequestPage() {
       <header className="border-b border-[#181713]/15 px-5 py-4 sm:px-8">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <Link href="/" className="text-xl font-black tracking-[-0.04em]">Fiakto.</Link>
-          <span className="rounded-full border border-[#181713]/20 px-3 py-1 text-xs font-semibold">
-            Solicitud protegida
-          </span>
+          <div className="flex items-center gap-4">
+            <Link href="/perfil" className="text-sm font-bold underline">Mi perfil</Link>
+            <span className="rounded-full border border-[#181713]/20 px-3 py-1 text-xs font-semibold">
+              Solicitud protegida
+            </span>
+          </div>
         </div>
       </header>
 

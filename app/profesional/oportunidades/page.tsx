@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth, useRoleGuard } from "@/app/providers/AuthProvider";
 import { formatSlaStatus } from "@/app/components/sla-status";
+import { AppHeader } from "@/app/components/AppHeader";
 
 type Opportunity = {
   id: string;
@@ -44,13 +45,18 @@ export default function OportunidadesPage() {
 
   if (!ready || opportunities === null) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
-        <p>Cargando oportunidades…</p>
-      </main>
+      <>
+        <AppHeader />
+        <main className="mx-auto max-w-3xl px-6 py-12">
+          <p>Cargando oportunidades…</p>
+        </main>
+      </>
     );
   }
 
   return (
+    <>
+    <AppHeader />
     <main className="mx-auto max-w-3xl px-6 py-12">
       <h1 className="mb-6 text-2xl font-bold">Oportunidades y trabajos en curso</h1>
 
@@ -92,5 +98,6 @@ export default function OportunidadesPage() {
         </ul>
       )}
     </main>
+    </>
   );
 }
