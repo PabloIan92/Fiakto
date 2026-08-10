@@ -16,6 +16,7 @@ Fiakto es un marketplace argentino para contratar profesionales verificados. Los
   El Firebase CLI no está instalado global en esta máquina, está cacheado vía npx en `C:\Users\Lemmon\AppData\Local\npm-cache\_npx\ba4f1959e38407b5\node_modules\firebase-tools` — invocarlo con `node <esa-ruta>/lib/bin/firebase.js <comando>` (o `npx firebase-tools@latest <comando>` si esa ruta ya no existe).
 - **No hardcodear secretos.** `GEMINI_API_KEY` y (a futuro) el alias/CBU de cobro van en Secret Manager y se referencian en `apphosting.yaml` — nunca en texto plano en el repo, aunque ahora sea privado.
 - **Patrón de bugs repetido en esta sesión:** varias veces la funcionalidad ya estaba bien implementada pero no había forma de *encontrarla* desde la navegación (no había link a `/login` desde la home, no había link a `/perfil` desde ningún lado, `/perfil` no tenía forma de volver atrás, el mapa era interactivo pero no lo decía en ningún lado). Antes de dar por buena una pantalla nueva: ¿hay cómo llegar? ¿hay cómo volver? ¿es obvio qué se puede clickear?
+- **Verificá siempre que tu clon local coincida con `origin/main` antes de diagnosticar nada.** El 2026-08-10 una sesión completa (36 commits) se hizo por error sobre una carpeta local cuya historia de git había divergido de GitHub desde el 3 de agosto y nunca se pusheó — se "arreglaron" bugs sobre código que no era el que estaba desplegado. Antes de investigar cualquier bug: `git fetch && git log HEAD..origin/main` (y viceversa); si hay commits de un lado que el otro no tiene, `origin/main` es la fuente de verdad, no asumas que tu carpeta está al día solo porque no tenés cambios sin commitear.
 
 ## Arquitectura de roles (clave para no romper nada)
 
@@ -58,6 +59,10 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 - [x] `/profesional/oportunidades` (listado filtrado por oficio/cobertura vía `canProfessionalViewRequest`) + detalle, siempre oculta `exactAddress`.
 - [x] **SLA / Ventana de reparación**: estados `in_progress`/`completed`, `slaDeadline` según `riskLevel` del triage (emergencia 4h, urgente 24h, normal 72h), endpoints `POST /api/requests/[id]/start` y `/complete`. **Simplificación conocida**: sin flujo de presupuestos/aceptación todavía, cualquier profesional que matchea oficio/cobertura puede iniciar un pedido "open" directamente.
 - [x] Listas blindadas contra solicitudes viejas sin `location` (datos de antes de que el campo fuera obligatorio) — muestran "Ubicación no disponible" en vez de crashear.
+- [x] **Fix (2026-08-10) — solicitudes quedaban en "Borrador" para siempre**: `app/cliente/solicitudes/nueva/page.tsx` creaba la solicitud (`POST /api/requests`) pero nunca llamaba al endpoint de triage (`POST /api/requests/[id]/triage`) — el documento nacía en `status: "draft"` y nada volvía a tocarlo. Se agregó la llamada al triage justo después de crear, más un botón "Reintentar análisis" en `/cliente/solicitudes` para las que ya habían quedado colgadas. De paso se encontró que `gemini-triage-provider.ts` usaba el modelo `gemini-2.5-flash`, deprecado para esta API key (404 `"no longer available to new users"`) — se cambió a `gemini-flash-latest` (verificado en logs de producción tras el fix).
+- [x] **Fix (2026-08-10) — no redirigía tras crear la solicitud**: ahora `router.push("/cliente/solicitudes")` después de un submit exitoso, en vez de dejar al cliente en la misma pantalla.
+- [x] **Fix (2026-08-10) — "Mis solicitudes"/"Oportunidades" colgadas en "Cargando…"**: en una navegación dura (URL directa o F5), `onIdTokenChanged` del SDK de Firebase Auth a veces nunca dispara ni una sola vez (restauración de persistencia en IndexedDB colgada) y `loading` se quedaba en `true` para siempre, sin ningún pedido de red. Se agregó un timeout de 6s en `AuthProvider` que fuerza `loading=false` si el listener real no resolvió a tiempo.
+- [x] **Precarga de domicilio (2026-08-10)**: si el cliente ya guardó su domicilio en `/perfil`, `/cliente/solicitudes/nueva` precarga el mapa, la localidad y la provincia con eso en vez de pedírselo de nuevo en cada solicitud.
 
 **Infra / deploy:**
 - [x] `npm run build` de producción funciona (proyecto movido fuera de `system32` — un lockfile ajeno ahí rompía el tracing de módulos de Next — y Next bajado de 16 a 15.5.23).
@@ -65,6 +70,12 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 - [x] `firebase.json`/`apphosting.yaml` configurados, backend `fiakto-staging` deployado (ver arriba, sin auto-deploy desde GitHub).
 - [x] `GEMINI_API_KEY` en Secret Manager, referenciado en `apphosting.yaml` y con acceso otorgado al backend.
 - [x] Bug de Storage corregido: `getStorage().bucket()` sin nombre resolvía al bucket legacy `<project>.appspot.com` (no existe en este proyecto) — se fuerza `fiakto.firebasestorage.app`.
+
+**Verificación de edad (2026-08-10):**
+- [x] `UserProfileSchema` tiene `birthDate` (YYYY-MM-DD, opcional a nivel de schema para no romper perfiles viejos guardados antes de este campo). `PUT /api/profile` exige que esté presente y rechaza el guardado (403, `minorBlocked: true`) si la persona tiene menos de 18 años (`isAdult`/`calculateAge` en `src/domain/profile.ts`) — aplica a cliente y profesional.
+- [x] `/perfil` pide la fecha de nacimiento como campo obligatorio y muestra el error del servidor si el guardado se rechaza (antes `handleSubmit` no chequeaba `response.ok` para nada — cualquier error, no solo este, se mostraba como "Perfil guardado").
+- [x] `/cliente/solicitudes/nueva` y `/profesional/oportunidades` bloquean su uso (mensaje explícito, sin formulario/listado) si el perfil ya guardado indica que la persona es menor — cubre a alguien que guardó su perfil antes de que este chequeo existiera.
+- [ ] **No implementado todavía**: verificación real de identidad/edad (hoy es autodeclarada, no hay validación contra DNI ni nada similar).
 
 **Legal / compliance (borradores, no listos para producción):**
 - [x] Documentos en `docs/legal/`: términos de servicio, política de privacidad, aviso resumido, cláusula de arbitraje, política DMCA. Declaran uso de IA/Gemini, jurisdicción Argentina, DMCA con notice-and-takedown.
@@ -83,6 +94,7 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 - [ ] Race condition menor: `GET /api/requests` puede devolver 401 una vez justo después del signup (la cookie de sesión tarda un instante en sincronizarse) — no rompe nada visible pero es un error real en consola.
 - [ ] Configurar Firebase Emulator Suite, o generar credenciales de Application Default Credentials, para poder probar `npm run dev` local sin depender de staging.
 - [ ] Pruebas Playwright end-to-end (hoy la cobertura es unitaria/Vitest).
+- [ ] `npx tsc --noEmit` tiene errores preexistentes (no introducidos el 2026-08-10, confirmado con `git log` que datan de `57f676b`) en `tests/routes/profile.test.ts`, `request-detail.test.ts`, `request-start.test.ts`, `requests-list.test.ts`: sus mocks inline de `ProfileRepository` no implementan `setPhotoPath`, que la interfaz real exige desde ese commit. No bloquea `npm run validate` porque usa Vitest, no `tsc`, pero conviene limpiarlo.
 
 ### Feature pedida por Pablo, todavía sin encarar: validación de comprobante de transferencia con Gemini
 
