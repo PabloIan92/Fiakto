@@ -7,7 +7,7 @@ type Context = { params: Promise<{ id: string }> };
 
 export type Dependencies = {
   authenticate(request: Request): Promise<Actor | null>;
-  repository: Pick<RequestRepository, "listByCustomer" | "listOpen" | "listByProfessional">;
+  repository: Pick<RequestRepository, "listByCustomer" | "listOpen" | "listByProfessional" | "get">;
   profileRepository: ProfileRepository;
 };
 
@@ -31,7 +31,16 @@ export function createRequestGetHandler(dependencies: Dependencies) {
         dependencies.repository.listOpen(),
         dependencies.repository.listByProfessional(actor.id),
       ]);
-      const found = [...open, ...ownJobs].find((item) => item.id === id);
+      let found = [...open, ...ownJobs].find((item) => item.id === id);
+      if (!found) {
+        // Puede ser una solicitud que este profesional pudo ver mientras
+        // estaba open/quoted (matcheaba oficio/cobertura) pero que ya salió
+        // de ese conjunto porque el cliente aceptó el presupuesto de otro
+        // profesional. Sin este fallback, quien perdió la puja recibía un
+        // 404 genérico en vez de poder ver que el trabajo ya fue asignado a
+        // otra persona (ver app/profesional/oportunidades/[id]/page.tsx).
+        found = (await dependencies.repository.get(id)) ?? undefined;
+      }
       if (!found) return Response.json({ error: "Not found" }, { status: 404 });
 
       // Si ya es el profesional asignado (in_progress/completed) no hace

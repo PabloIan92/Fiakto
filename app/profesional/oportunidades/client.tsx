@@ -13,12 +13,18 @@ type Opportunity = {
   // Puede faltar en datos viejos que se guardaron antes de que la ubicacion
   // fuera obligatoria en el schema (ver ServiceRequestSchema).
   location?: { locality: string; province: string };
-  status: "open" | "in_progress" | "completed";
+  status: "open" | "quoted" | "accepted" | "in_progress" | "completed";
+  professionalId?: string;
   slaDeadline?: string;
 };
 
 const STATUS_LABELS: Record<Opportunity["status"], string> = {
   open: "Abierta",
+  // El listado ya incluye solicitudes "quoted" (otro profesional ya
+  // presupuestó, pero los presupuestos son privados: todavía se puede
+  // competir) y los propios trabajos "accepted" (esperando iniciar).
+  quoted: "Abierta, con presupuestos",
+  accepted: "Asignada a mí",
   in_progress: "En curso",
   completed: "Completada",
 };

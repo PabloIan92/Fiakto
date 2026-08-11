@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 
@@ -20,21 +20,46 @@ type OpportunityDetail = {
   // Puede faltar en datos viejos que se guardaron antes de que la ubicacion
   // fuera obligatoria en el schema (ver ServiceRequestSchema).
   location?: { lat: number; lng: number; displayRadiusKm: number; locality: string; province: string };
-  status: "open" | "in_progress" | "completed";
+  status: "open" | "quoted" | "accepted" | "in_progress" | "completed" | "closed";
+  professionalId?: string;
   slaHours?: number;
   slaDeadline?: string;
   workStartedAt?: string;
   workCompletedAt?: string;
 };
 
+type OwnQuote = {
+  id: string;
+  status: "pending" | "accepted" | "rejected";
+};
+
+const OWN_QUOTE_MESSAGE: Record<OwnQuote["status"], string> = {
+  pending: "Ya enviaste tu presupuesto. Esperando que el cliente decida.",
+  accepted: "El cliente aceptó tu presupuesto.",
+  rejected: "El cliente eligió el presupuesto de otro profesional para este trabajo.",
+};
+
+const CAN_QUOTE_STATUSES: OpportunityDetail["status"][] = ["open", "quoted"];
+const ASSIGNED_STATUSES: OpportunityDetail["status"][] = ["accepted", "in_progress", "completed"];
+
 export default function OportunidadDetallePage() {
   const params = useParams<{ id: string }>();
   const { user } = useAuth();
   const { ready } = useRoleGuard("professional", "/cliente/solicitudes");
   const [opportunity, setOpportunity] = useState<OpportunityDetail | null>(null);
+  const [ownQuote, setOwnQuote] = useState<OwnQuote | null>(null);
   const [status, setStatus] = useState<"loading" | "ok" | "not-found" | "forbidden">("loading");
   const [actionPending, setActionPending] = useState(false);
   const [reloadIndex, setReloadIndex] = useState(0);
+
+  const [quoteForm, setQuoteForm] = useState({
+    laborArs: "",
+    materialsArs: "",
+    description: "",
+    estimatedHours: "",
+  });
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [submittingQuote, setSubmittingQuote] = useState(false);
 
   useEffect(() => {
     if (!ready || !user) return;
@@ -46,7 +71,20 @@ export default function OportunidadDetallePage() {
       if (response.status === 404) return setStatus("not-found");
       if (response.status === 403) return setStatus("forbidden");
       if (!response.ok) return setStatus("not-found");
-      setOpportunity((await response.json()) as OpportunityDetail);
+      const data = (await response.json()) as OpportunityDetail;
+      setOpportunity(data);
+
+      if (CAN_QUOTE_STATUSES.includes(data.status)) {
+        const quotesResponse = await fetch(`/api/requests/${params.id}/quotes`, {
+          headers: { authorization: `Bearer ${token}` },
+        });
+        if (quotesResponse.ok) {
+          const quotesData = (await quotesResponse.json()) as { quote: OwnQuote | null };
+          setOwnQuote(quotesData.quote);
+        }
+      } else {
+        setOwnQuote(null);
+      }
       setStatus("ok");
     })();
     // `ready` faltaba de esta lista — mismo bug que en
@@ -77,6 +115,32 @@ export default function OportunidadDetallePage() {
       headers: { authorization: `Bearer ${token}` },
     });
     setActionPending(false);
+    setReloadIndex((n) => n + 1);
+  }
+
+  async function handleSubmitQuote(event: FormEvent) {
+    event.preventDefault();
+    if (!user) return;
+    setSubmittingQuote(true);
+    setQuoteError(null);
+    const token = await user.getIdToken();
+    const response = await fetch(`/api/requests/${params.id}/quotes`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        laborArs: Number(quoteForm.laborArs),
+        materialsArs: Number(quoteForm.materialsArs),
+        description: quoteForm.description,
+        estimatedHours: Number(quoteForm.estimatedHours),
+      }),
+    });
+    setSubmittingQuote(false);
+    if (!response.ok) {
+      setQuoteError(
+        "No pudimos enviar tu presupuesto. Revisá los montos, la descripción (mínimo 20 caracteres) y las horas estimadas.",
+      );
+      return;
+    }
     setReloadIndex((n) => n + 1);
   }
 
@@ -113,6 +177,9 @@ export default function OportunidadDetallePage() {
     );
   }
 
+  const assignedToSomeoneElse =
+    ASSIGNED_STATUSES.includes(opportunity.status) && opportunity.professionalId !== user?.uid;
+
   return (
     <>
     <AppHeader />
@@ -140,7 +207,83 @@ export default function OportunidadDetallePage() {
       )}
 
       <div className="mt-8 border-t border-[#181713]/15 pt-6">
-        {opportunity.status === "open" && (
+        {assignedToSomeoneElse && (
+          <p className="text-sm font-semibold text-[#777166]">
+            Este trabajo ya fue asignado a otro profesional.
+          </p>
+        )}
+
+        {!assignedToSomeoneElse && CAN_QUOTE_STATUSES.includes(opportunity.status) && (
+          ownQuote ? (
+            <p className="text-sm font-bold text-[#181713]">{OWN_QUOTE_MESSAGE[ownQuote.status]}</p>
+          ) : (
+            <form onSubmit={handleSubmitQuote} className="flex flex-col gap-4">
+              <h2 className="text-lg font-semibold">Enviar presupuesto</h2>
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                Mano de obra (ARS)
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  required
+                  value={quoteForm.laborArs}
+                  onChange={(event) => setQuoteForm((form) => ({ ...form, laborArs: event.target.value }))}
+                  className="rounded border border-[#181713]/20 px-3 py-2"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                Materiales (ARS)
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  required
+                  value={quoteForm.materialsArs}
+                  onChange={(event) => setQuoteForm((form) => ({ ...form, materialsArs: event.target.value }))}
+                  className="rounded border border-[#181713]/20 px-3 py-2"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                Horas estimadas
+                <input
+                  type="number"
+                  min="1"
+                  step="0.5"
+                  required
+                  value={quoteForm.estimatedHours}
+                  onChange={(event) => setQuoteForm((form) => ({ ...form, estimatedHours: event.target.value }))}
+                  className="rounded border border-[#181713]/20 px-3 py-2"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                Descripción del trabajo
+                <textarea
+                  required
+                  minLength={20}
+                  maxLength={1500}
+                  rows={4}
+                  value={quoteForm.description}
+                  onChange={(event) => setQuoteForm((form) => ({ ...form, description: event.target.value }))}
+                  className="rounded border border-[#181713]/20 px-3 py-2"
+                />
+              </label>
+              {quoteError && (
+                <p role="alert" className="text-sm font-semibold text-[#b52f1c]">
+                  {quoteError}
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={submittingQuote}
+                className="w-full bg-[#dc4b2f] px-6 py-4 text-base font-black text-white transition hover:bg-[#bd351f] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {submittingQuote ? "Enviando…" : "Enviar presupuesto"}
+              </button>
+            </form>
+          )
+        )}
+
+        {!assignedToSomeoneElse && opportunity.status === "accepted" && (
           <button
             type="button"
             onClick={handleStart}
@@ -165,7 +308,7 @@ export default function OportunidadDetallePage() {
           </>
         )}
 
-        {opportunity.status === "completed" && (
+        {opportunity.status === "completed" && !assignedToSomeoneElse && (
           <p className="text-sm font-bold text-[#34745a]">
             Trabajo completado
             {opportunity.workCompletedAt &&

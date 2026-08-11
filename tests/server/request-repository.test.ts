@@ -16,6 +16,11 @@ class FakeRequestRepository implements RequestRepository {
     return { id };
   }
 
+  async get(id: string) {
+    const stored = this.requests.get(id);
+    return stored ? { id, ...stored.request } : null;
+  }
+
   async saveTriage(id: string, result: TriageResult) {
     const stored = this.requests.get(id);
     if (!stored) throw new Error("Request not found");
@@ -53,6 +58,12 @@ class FakeRequestRepository implements RequestRepository {
     const stored = this.requests.get(id);
     if (!stored) throw new Error("Request not found");
     this.requests.set(id, { ...stored, request: { ...stored.request, status: "completed", ...input } });
+  }
+
+  async updateStatus(id: string, input: { status: ServiceRequest["status"]; professionalId?: string }) {
+    const stored = this.requests.get(id);
+    if (!stored) throw new Error("Request not found");
+    this.requests.set(id, { ...stored, request: { ...stored.request, ...input } });
   }
 }
 
@@ -97,6 +108,11 @@ describe("RequestRepository contract", () => {
 class FakeFirestore {
   readonly added: Array<{ collection: string; data: Record<string, unknown> }> = [];
   readonly updated: Array<{ collection: string; id: string; data: Record<string, unknown> }> = [];
+  private readonly seeded = new Map<string, Record<string, unknown>>();
+
+  seed(id: string, data: Record<string, unknown>) {
+    this.seeded.set(id, data);
+  }
 
   collection(name: string) {
     return {
@@ -107,6 +123,10 @@ class FakeFirestore {
       doc: (id: string) => ({
         update: async (data: Record<string, unknown>) => {
           this.updated.push({ collection: name, id, data });
+        },
+        get: async () => {
+          const data = this.seeded.get(id);
+          return { exists: data !== undefined, id, data: () => data };
         },
       }),
     };
@@ -171,6 +191,37 @@ describe("FirestoreRequestRepository", () => {
       collection: "requests",
       id: "request-7",
       data: { status: "completed", workCompletedAt: "2026-08-10T09:00:00.000Z" },
+    });
+  });
+
+  it("returns null from get() when the request doesn't exist", async () => {
+    const firestore = new FakeFirestore();
+    const repository = new FirestoreRequestRepository(firestore);
+
+    expect(await repository.get("missing")).toBeNull();
+  });
+
+  it("returns the request by id from get()", async () => {
+    const firestore = new FakeFirestore();
+    firestore.seed("request-7", { ...baseRequest, status: "accepted" });
+    const repository = new FirestoreRequestRepository(firestore);
+
+    expect(await repository.get("request-7")).toEqual({
+      id: "request-7",
+      ...baseRequest,
+      status: "accepted",
+    });
+  });
+
+  it("updates the status and professional when accepting a quote", async () => {
+    const firestore = new FakeFirestore();
+    const repository = new FirestoreRequestRepository(firestore);
+    await repository.updateStatus("request-7", { status: "accepted", professionalId: "pro-1" });
+
+    expect(firestore.updated[0]).toMatchObject({
+      collection: "requests",
+      id: "request-7",
+      data: { status: "accepted", professionalId: "pro-1" },
     });
   });
 });

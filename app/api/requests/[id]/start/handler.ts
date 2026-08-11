@@ -1,8 +1,6 @@
 import type { Actor } from "@/src/server/auth";
 import { appendAuditEvent } from "@/src/server/audit";
 import type { RequestRepository } from "@/src/server/repositories/request-repository";
-import type { ProfileRepository } from "@/src/server/repositories/profile-repository";
-import { canProfessionalViewRequest } from "@/src/domain/quotes";
 import { SLA_HOURS_BY_RISK } from "@/src/domain/requests";
 
 type AuditEvent = Parameters<typeof appendAuditEvent>[0];
@@ -10,8 +8,7 @@ type Context = { params: Promise<{ id: string }> };
 
 export type Dependencies = {
   authenticate(request: Request): Promise<Actor | null>;
-  repository: Pick<RequestRepository, "listOpen" | "startWork">;
-  profileRepository: ProfileRepository;
+  repository: Pick<RequestRepository, "listByProfessional" | "startWork">;
   appendAudit(event: AuditEvent): Promise<unknown>;
   now(): Date;
 };
@@ -24,28 +21,20 @@ export function createRequestStartHandler(dependencies: Dependencies) {
     }
 
     const { id } = await context.params;
-    const open = await dependencies.repository.listOpen();
-    const found = open.find((item) => item.id === id);
+    // Solo puede iniciar el profesional cuyo presupuesto fue aceptado (ver
+    // POST .../quotes/[quoteId]/accept, que setea professionalId al
+    // aceptar). Ya no se busca en listOpen(): una vez aceptado, la
+    // solicitud sale de ese conjunto, así que se busca entre los trabajos
+    // ya asignados a este profesional.
+    const ownJobs = await dependencies.repository.listByProfessional(actor.id);
+    const found = ownJobs.find((item) => item.id === id);
     if (!found) return Response.json({ error: "Not found" }, { status: 404 });
-
-    const profile = await dependencies.profileRepository.get(actor.id, "professional");
-    // found.location puede faltar en solicitudes legacy (ver mismo
-    // comentario en app/api/requests/handler.ts).
-    const canView =
-      !!found.location &&
-      canProfessionalViewRequest(
-        {
-          trade: found.triage?.trade ?? "",
-          province: found.location.province,
-          locality: found.location.locality,
-        },
-        {
-          verified: true,
-          trades: profile?.trades ?? [],
-          coverage: profile?.coverage ?? [],
-        },
+    if (found.status !== "accepted") {
+      return Response.json(
+        { error: "Request is not accepted for this professional" },
+        { status: 409 },
       );
-    if (!canView) return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const riskLevel = found.triage?.riskLevel ?? "normal";
     const slaHours = SLA_HOURS_BY_RISK[riskLevel];

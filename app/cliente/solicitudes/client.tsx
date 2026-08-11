@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 import { useAuth, useRoleGuard } from "@/app/providers/AuthProvider";
 import { formatSlaStatus } from "@/app/components/sla-status";
@@ -112,9 +113,9 @@ export default function MisSolicitudesPage() {
     <main className="mx-auto max-w-3xl px-6 py-12">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Mis solicitudes</h1>
-        <a href="/cliente/solicitudes/nueva" className="rounded bg-[#181713] px-4 py-2 text-white">
+        <Link href="/cliente/solicitudes/nueva" className="rounded bg-[#181713] px-4 py-2 text-white">
           Nueva solicitud
-        </a>
+        </Link>
       </div>
 
       {retryError && (
@@ -132,22 +133,25 @@ export default function MisSolicitudesPage() {
               key={item.id}
               className="flex flex-col gap-2 rounded-lg border border-[#181713]/10 p-4"
             >
-              <div className="flex items-center justify-between gap-3">
-                <span
-                  className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLORS[item.status]}`}
-                >
-                  {STATUS_LABELS[item.status]}
-                </span>
-                <span className="text-sm text-[#777166]">
-                  {item.location
-                    ? `${item.location.locality}, ${item.location.province}`
-                    : "Ubicación no disponible"}
-                </span>
-              </div>
-              <p className="line-clamp-2 text-sm">{item.description}</p>
-              {item.status === "in_progress" && item.slaDeadline && (
-                <SlaBadge slaDeadline={item.slaDeadline} />
-              )}
+              <a href={`/cliente/solicitudes/${item.id}`} className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span
+                    className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLORS[item.status]}`}
+                  >
+                    {STATUS_LABELS[item.status]}
+                  </span>
+                  <span className="text-sm text-[#777166]">
+                    {item.location
+                      ? `${item.location.locality}, ${item.location.province}`
+                      : "Ubicación no disponible"}
+                  </span>
+                </div>
+                <p className="line-clamp-2 text-sm">{item.description}</p>
+                {item.status === "in_progress" && item.slaDeadline && (
+                  <SlaBadge slaDeadline={item.slaDeadline} />
+                )}
+                <span className="text-sm font-medium underline">Ver detalle y presupuestos</span>
+              </a>
               {item.status === "draft" && (
                 <div className="mt-1 flex items-center gap-3">
                   <span className="text-xs text-[#777166]">

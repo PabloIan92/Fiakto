@@ -5,6 +5,12 @@ export type ServiceRequestWithId = ServiceRequest & { id: string };
 
 export interface RequestRepository {
   create(input: ServiceRequest): Promise<{ id: string }>;
+  // Lookup directo por id, sin pasar por ninguno de los listados filtrados
+  // por rol de abajo. Lo necesitan los endpoints de presupuestos (y el
+  // fallback del detalle para un profesional que perdió una puja) para leer
+  // una solicitud sin depender de que siga siendo "open"/"quoted" o de que
+  // ya sea "propia" según professionalId.
+  get(id: string): Promise<ServiceRequestWithId | null>;
   saveTriage(id: string, result: TriageResult): Promise<void>;
   listByCustomer(customerId: string): Promise<ServiceRequestWithId[]>;
   listOpen(): Promise<ServiceRequestWithId[]>;
@@ -14,4 +20,11 @@ export interface RequestRepository {
     input: { professionalId: string; workStartedAt: string; slaDeadline: string; slaHours: number },
   ): Promise<void>;
   completeWork(id: string, input: { workCompletedAt: string }): Promise<void>;
+  // Transición genérica de estado usada por el flujo de presupuestos:
+  // "open" -> "quoted" al recibir el primer presupuesto, y "-> accepted"
+  // (con el professionalId ganador) al aceptar uno.
+  updateStatus(
+    id: string,
+    input: { status: ServiceRequest["status"]; professionalId?: string },
+  ): Promise<void>;
 }

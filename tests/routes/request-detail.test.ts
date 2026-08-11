@@ -40,6 +40,7 @@ describe("GET /api/requests/[id]", () => {
         listByCustomer: async () => [],
         listOpen: async () => [openInLanus],
         listByProfessional: async () => [],
+        get: async () => null,
       },
       profileRepository: {
         get: async () =>
@@ -59,6 +60,7 @@ describe("GET /api/requests/[id]", () => {
         listByCustomer: async () => [],
         listOpen: async () => [openInLanus],
         listByProfessional: async () => [],
+        get: async () => null,
       },
       profileRepository: {
         get: async () =>
@@ -86,6 +88,7 @@ describe("GET /api/requests/[id]", () => {
         listByCustomer: async () => [],
         listOpen: async () => [],
         listByProfessional: async () => [ownJob],
+        get: async () => null,
       },
       profileRepository: {
         get: async () =>
@@ -107,6 +110,7 @@ describe("GET /api/requests/[id]", () => {
         listByCustomer: async () => [openInLanus],
         listOpen: async () => [],
         listByProfessional: async () => [],
+        get: async () => null,
       },
       profileRepository: { get: async () => null, upsert: async () => undefined },
     });
@@ -125,6 +129,7 @@ describe("GET /api/requests/[id]", () => {
         listByCustomer: async () => [],
         listOpen: async () => [legacyWithoutLocation],
         listByProfessional: async () => [],
+        get: async () => null,
       },
       profileRepository: {
         get: async () =>
@@ -144,11 +149,42 @@ describe("GET /api/requests/[id]", () => {
         listByCustomer: async () => [],
         listOpen: async () => [],
         listByProfessional: async () => [],
+        get: async () => null,
       },
       profileRepository: { get: async () => null, upsert: async () => undefined },
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
     expect(response.status).toBe(404);
+  });
+
+  it("falls back to a direct lookup so a professional who lost the bid can see it was assigned to someone else", async () => {
+    const acceptedForSomeoneElse = {
+      ...openInLanus,
+      status: "accepted" as const,
+      professionalId: "pro-2",
+    };
+    const handler = createRequestGetHandler({
+      authenticate: async () => ({ id: "pro-1", role: "professional" }),
+      repository: {
+        listByCustomer: async () => [],
+        // Ya no está en "open"/"quoted" ni es un trabajo propio: solo
+        // aparece a través del fallback de get().
+        listOpen: async () => [],
+        listByProfessional: async () => [],
+        get: async () => acceptedForSomeoneElse,
+      },
+      profileRepository: {
+        get: async () =>
+          ({ userId: "pro-1", role: "professional", phone: "1", trades: ["plomeria"], coverage: ["Lanús"] }) as UserProfile,
+        upsert: async () => undefined,
+        setPhotoPath: async () => undefined,
+      },
+    });
+
+    const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({ status: "accepted", professionalId: "pro-2" });
   });
 });

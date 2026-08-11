@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { ServiceRequestWithId } from "@/src/server/repositories/request-repository";
-import type { UserProfile } from "@/src/domain/profile";
 import { createRequestStartHandler } from "@/app/api/requests/[id]/start/handler";
 
-const openInLanus: ServiceRequestWithId = {
+const acceptedForPro1: ServiceRequestWithId = {
   id: "request-1",
   customerId: "customer-1",
   description: "La canilla pierde agua debajo de la mesada de la cocina.",
@@ -17,7 +16,8 @@ const openInLanus: ServiceRequestWithId = {
     exactAddress: "Calle Falsa 123",
   },
   media: [],
-  status: "open",
+  status: "accepted",
+  professionalId: "pro-1",
   triage: {
     trade: "plomeria",
     summary: "Pérdida en la canilla.",
@@ -39,32 +39,20 @@ function call(handler: ReturnType<typeof createRequestStartHandler>) {
   );
 }
 
-function dependencies(options?: { open?: ServiceRequestWithId[]; profile?: UserProfile | null }) {
+function dependencies(options?: { ownJobs?: ServiceRequestWithId[]; authenticated?: boolean }) {
   const started: Array<{ id: string; input: Record<string, unknown> }> = [];
   const audits: Array<Record<string, unknown>> = [];
   return {
     started,
     audits,
     deps: {
-      authenticate: async () => ({ id: "pro-1", role: "professional" as const }),
+      authenticate: async () =>
+        options?.authenticated === false ? null : ({ id: "pro-1", role: "professional" as const }),
       repository: {
-        listOpen: async () => options?.open ?? [openInLanus],
+        listByProfessional: async () => options?.ownJobs ?? [acceptedForPro1],
         startWork: async (id: string, input: Record<string, unknown>) => {
           started.push({ id, input });
         },
-      },
-      profileRepository: {
-        get: async () =>
-          options?.profile === undefined
-            ? ({
-                userId: "pro-1",
-                role: "professional",
-                phone: "1",
-                trades: ["plomeria"],
-                coverage: ["Lanús"],
-              } as UserProfile)
-            : options.profile,
-        upsert: async () => undefined,
       },
       appendAudit: async (event: Record<string, unknown>) => {
         audits.push(event);
@@ -75,31 +63,28 @@ function dependencies(options?: { open?: ServiceRequestWithId[]; profile?: UserP
 }
 
 describe("POST /api/requests/:id/start", () => {
-  it("rejects a professional whose trade doesn't match", async () => {
-    const { deps } = dependencies({
-      profile: {
-        userId: "pro-1",
-        role: "professional",
-        phone: "1",
-        trades: ["electricidad"],
-        coverage: ["Lanús"],
-      },
-    });
+  it("returns 401 when there is no authenticated professional", async () => {
+    const { deps } = dependencies({ authenticated: false });
     const response = await call(createRequestStartHandler(deps));
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
   });
 
-  it("returns 404 when the request isn't open", async () => {
-    const { deps } = dependencies({ open: [] });
+  it("returns 404 when the request wasn't accepted for this professional", async () => {
+    const { deps } = dependencies({ ownJobs: [] });
     const response = await call(createRequestStartHandler(deps));
     expect(response.status).toBe(404);
   });
 
-  it("returns 403 instead of crashing for a legacy request with no location", async () => {
-    const legacyWithoutLocation = { ...openInLanus, location: undefined } as unknown as ServiceRequestWithId;
-    const { deps } = dependencies({ open: [legacyWithoutLocation] });
+  it("returns 409 when the professional's quote hasn't been accepted yet", async () => {
+    const { deps } = dependencies({ ownJobs: [{ ...acceptedForPro1, status: "quoted" }] });
     const response = await call(createRequestStartHandler(deps));
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(409);
+  });
+
+  it("returns 409 when work was already started", async () => {
+    const { deps } = dependencies({ ownJobs: [{ ...acceptedForPro1, status: "in_progress" }] });
+    const response = await call(createRequestStartHandler(deps));
+    expect(response.status).toBe(409);
   });
 
   it("starts work with an SLA deadline based on the triage risk level and appends an audit event", async () => {

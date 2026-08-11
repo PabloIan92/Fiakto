@@ -9,6 +9,8 @@ export const QuoteSchema = z.object({
   estimatedHours: z.number().positive().max(240),
 });
 
+export type Quote = z.infer<typeof QuoteSchema>;
+
 type Opportunity = {
   trade: string;
   province: string;

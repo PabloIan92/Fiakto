@@ -80,6 +80,10 @@ export function createRequestsGetHandler(dependencies: GetDependencies) {
 
     if (actor.role === "professional") {
       const profile = await dependencies.profileRepository.get(actor.id, "professional");
+      // listOpen() devuelve "open" y "quoted": los presupuestos son
+      // privados, así que un profesional sigue pudiendo presupuestar una
+      // solicitud que ya recibió el presupuesto de otro (ver
+      // FirestoreRequestRepository.listOpen).
       const open = await dependencies.repository.listOpen();
       // item.location puede faltar en solicitudes viejas guardadas antes de
       // que el campo fuera obligatorio en el schema (ver mismo comentario en
