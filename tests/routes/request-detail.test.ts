@@ -117,6 +117,26 @@ describe("GET /api/requests/[id]", () => {
     expect(body.location.exactAddress).toBe("Calle Falsa 123");
   });
 
+  it("returns 403 instead of crashing for a legacy request with no location", async () => {
+    const legacyWithoutLocation = { ...openInLanus, location: undefined } as unknown as typeof openInLanus;
+    const handler = createRequestGetHandler({
+      authenticate: async () => ({ id: "pro-1", role: "professional" }),
+      repository: {
+        listByCustomer: async () => [],
+        listOpen: async () => [legacyWithoutLocation],
+        listByProfessional: async () => [],
+      },
+      profileRepository: {
+        get: async () =>
+          ({ userId: "pro-1", role: "professional", phone: "1", trades: ["plomeria"], coverage: ["Lanús"] }) as UserProfile,
+        upsert: async () => undefined,
+      },
+    });
+
+    const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
+    expect(response.status).toBe(403);
+  });
+
   it("returns 404 for a request the customer doesn't own", async () => {
     const handler = createRequestGetHandler({
       authenticate: async () => ({ id: "someone-else", role: "customer" }),

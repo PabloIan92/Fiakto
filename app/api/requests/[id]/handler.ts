@@ -38,19 +38,25 @@ export function createRequestGetHandler(dependencies: Dependencies) {
       // falta re-chequear oficio/cobertura: ya se validaron al iniciar el
       // trabajo y la solicitud puede haber salido de "open" desde entonces.
       if (found.professionalId !== actor.id) {
+        // found.location puede faltar en solicitudes legacy (ver mismo
+        // comentario en app/api/requests/handler.ts) — sin location no hay
+        // forma de haber matcheado nunca, así que se trata como no visible
+        // en vez de crashear con un 500 al leer found.location.province.
         const profile = await dependencies.profileRepository.get(actor.id, "professional");
-        const canView = canProfessionalViewRequest(
-          {
-            trade: found.triage?.trade ?? "",
-            province: found.location.province,
-            locality: found.location.locality,
-          },
-          {
-            verified: true,
-            trades: profile?.trades ?? [],
-            coverage: profile?.coverage ?? [],
-          },
-        );
+        const canView =
+          !!found.location &&
+          canProfessionalViewRequest(
+            {
+              trade: found.triage?.trade ?? "",
+              province: found.location.province,
+              locality: found.location.locality,
+            },
+            {
+              verified: true,
+              trades: profile?.trades ?? [],
+              coverage: profile?.coverage ?? [],
+            },
+          );
         if (!canView) return Response.json({ error: "Forbidden" }, { status: 403 });
       }
 

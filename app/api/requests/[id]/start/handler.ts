@@ -29,18 +29,22 @@ export function createRequestStartHandler(dependencies: Dependencies) {
     if (!found) return Response.json({ error: "Not found" }, { status: 404 });
 
     const profile = await dependencies.profileRepository.get(actor.id, "professional");
-    const canView = canProfessionalViewRequest(
-      {
-        trade: found.triage?.trade ?? "",
-        province: found.location.province,
-        locality: found.location.locality,
-      },
-      {
-        verified: true,
-        trades: profile?.trades ?? [],
-        coverage: profile?.coverage ?? [],
-      },
-    );
+    // found.location puede faltar en solicitudes legacy (ver mismo
+    // comentario en app/api/requests/handler.ts).
+    const canView =
+      !!found.location &&
+      canProfessionalViewRequest(
+        {
+          trade: found.triage?.trade ?? "",
+          province: found.location.province,
+          locality: found.location.locality,
+        },
+        {
+          verified: true,
+          trades: profile?.trades ?? [],
+          coverage: profile?.coverage ?? [],
+        },
+      );
     if (!canView) return Response.json({ error: "Forbidden" }, { status: 403 });
 
     const riskLevel = found.triage?.riskLevel ?? "normal";

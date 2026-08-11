@@ -95,6 +95,13 @@ describe("POST /api/requests/:id/start", () => {
     expect(response.status).toBe(404);
   });
 
+  it("returns 403 instead of crashing for a legacy request with no location", async () => {
+    const legacyWithoutLocation = { ...openInLanus, location: undefined } as unknown as ServiceRequestWithId;
+    const { deps } = dependencies({ open: [legacyWithoutLocation] });
+    const response = await call(createRequestStartHandler(deps));
+    expect(response.status).toBe(403);
+  });
+
   it("starts work with an SLA deadline based on the triage risk level and appends an audit event", async () => {
     const { deps, started, audits } = dependencies();
     const response = await call(createRequestStartHandler(deps));

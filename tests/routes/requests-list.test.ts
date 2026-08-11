@@ -128,4 +128,28 @@ describe("GET /api/requests", () => {
     expect(data.requests).toHaveLength(1);
     expect(data.requests[0]).toMatchObject({ id: "request-2", status: "in_progress" });
   });
+
+  it("skips legacy open requests with no location instead of crashing the whole list", async () => {
+    const legacyWithoutLocation = {
+      ...openInLanus,
+      id: "request-legacy",
+      location: undefined,
+    } as unknown as ServiceRequestWithId;
+    const handler = createRequestsGetHandler(
+      dependencies([legacyWithoutLocation, openInLanus], {
+        "actor-1": {
+          userId: "actor-1",
+          role: "professional",
+          phone: "123456",
+          trades: ["plomeria"],
+          coverage: ["Lanús"],
+        },
+      }),
+    );
+    const response = await handler(requestWithRole("professional"));
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as { requests: ServiceRequestWithId[] };
+    expect(data.requests).toHaveLength(1);
+    expect(data.requests[0].id).toBe(openInLanus.id);
+  });
 });

@@ -81,7 +81,14 @@ export function createRequestsGetHandler(dependencies: GetDependencies) {
     if (actor.role === "professional") {
       const profile = await dependencies.profileRepository.get(actor.id, "professional");
       const open = await dependencies.repository.listOpen();
+      // item.location puede faltar en solicitudes viejas guardadas antes de
+      // que el campo fuera obligatorio en el schema (ver mismo comentario en
+      // app/profesional/oportunidades/page.tsx) — sin este guard, una sola
+      // solicitud legacy sin location tiraba abajo el listado entero con un
+      // 500 (`Cannot read properties of undefined (reading 'province')`),
+      // dejando a cualquier profesional sin ver ninguna oportunidad.
       const matching = open.filter((item) =>
+        item.location &&
         canProfessionalViewRequest(
           {
             trade: item.triage?.trade ?? "",
