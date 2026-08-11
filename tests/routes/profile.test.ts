@@ -119,6 +119,21 @@ describe("PUT /api/profile", () => {
     );
 
     expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: "Falta la fecha de nacimiento" });
+    expect(stored.has("customer-1_customer")).toBe(false);
+  });
+
+  it("treats an empty birth date string the same as a missing one", async () => {
+    const { deps, stored } = dependencies({ id: "customer-1", role: "customer" });
+    const response = await createProfilePutHandler(deps)(
+      new Request("http://localhost/api/profile", {
+        method: "PUT",
+        body: JSON.stringify({ phone: "123456", birthDate: "" }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: "Falta la fecha de nacimiento" });
     expect(stored.has("customer-1_customer")).toBe(false);
   });
 

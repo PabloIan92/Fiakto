@@ -42,10 +42,19 @@ export function createProfilePutHandler(dependencies: Dependencies) {
       return Response.json({ error: "Invalid JSON" }, { status: 400 });
     }
 
+    // Un birthDate vacío ("") no es lo mismo que ausente para el schema: la
+    // regex de formato lo rechaza igual que cualquier fecha mal escrita, y
+    // el chequeo mas claro de "falta la fecha" nunca se alcanza. El
+    // formulario del cliente siempre manda un string (nunca undefined), asi
+    // que normalizamos vacio -> undefined antes de validar.
+    const rawBirthDate = (body as { birthDate?: unknown })?.birthDate;
+    const birthDate = typeof rawBirthDate === "string" && rawBirthDate.trim() ? rawBirthDate : undefined;
+
     const parsed = UserProfileSchema.safeParse({
       ...(typeof body === "object" && body !== null ? body : {}),
       userId: actor.id,
       role: actor.role,
+      birthDate,
       // Solo un profesional puede guardar oficios/cobertura; un cliente los ignora.
       trades: actor.role === "professional"
         ? (body as { trades?: unknown })?.trades ?? []
