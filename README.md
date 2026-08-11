@@ -57,7 +57,8 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 **Solicitudes y oportunidades:**
 - [x] `/cliente/solicitudes` (listado) y `/cliente/solicitudes/nueva` (alta con mapa).
 - [x] `/profesional/oportunidades` (listado filtrado por oficio/cobertura vía `canProfessionalViewRequest`) + detalle, siempre oculta `exactAddress`.
-- [x] **SLA / Ventana de reparación**: estados `in_progress`/`completed`, `slaDeadline` según `riskLevel` del triage (emergencia 4h, urgente 24h, normal 72h), endpoints `POST /api/requests/[id]/start` y `/complete`. **Simplificación conocida**: sin flujo de presupuestos/aceptación todavía, cualquier profesional que matchea oficio/cobertura puede iniciar un pedido "open" directamente.
+- [x] **SLA / Ventana de reparación**: estados `in_progress`/`completed`, `slaDeadline` según `riskLevel` del triage (emergencia 4h, urgente 24h, normal 72h), endpoints `POST /api/requests/[id]/start` y `/complete`.
+- [x] **Flujo de presupuestos (2026-08-11)**: `QuoteSchema` y los estados `"quoted"`/`"accepted"` ya existían en el dominio pero nada los usaba — cualquier profesional que matcheaba oficio/cobertura podía iniciar el trabajo directamente. Ahora: el profesional envía un presupuesto privado (`POST /api/requests/[id]/quotes`, mano de obra + materiales + descripción + horas estimadas; bloqueado si ya envió uno para esa solicitud, o si el estado ya no acepta presupuestos), varios profesionales pueden competir por la misma solicitud (`listOpen()` incluye `"open"` y `"quoted"`), el cliente ve todos los presupuestos recibidos en la nueva página `/cliente/solicitudes/[id]` (no existía antes; el listado ahora linkea ahí) y acepta uno (`POST .../quotes/[quoteId]/accept`), lo que rechaza los demás pendientes y asigna la solicitud (`status: "accepted"`, `professionalId`). `POST /api/requests/[id]/start` ya no acepta a cualquier profesional matcheante: exige `status === "accepted" && professionalId === actor.id`. Probado de punta a punta en staging (publicar → 2 profesionales pueden ver la misma solicitud → presupuestar → aceptar → "Iniciar trabajo" solo para el ganador → "En reparación" con SLA).
 - [x] Listas blindadas contra solicitudes viejas sin `location` (datos de antes de que el campo fuera obligatorio) — muestran "Ubicación no disponible" en vez de crashear.
 - [x] **Fix (2026-08-10) — solicitudes quedaban en "Borrador" para siempre**: `app/cliente/solicitudes/nueva/page.tsx` creaba la solicitud (`POST /api/requests`) pero nunca llamaba al endpoint de triage (`POST /api/requests/[id]/triage`) — el documento nacía en `status: "draft"` y nada volvía a tocarlo. Se agregó la llamada al triage justo después de crear, más un botón "Reintentar análisis" en `/cliente/solicitudes` para las que ya habían quedado colgadas. De paso se encontró que `gemini-triage-provider.ts` usaba el modelo `gemini-2.5-flash`, deprecado para esta API key (404 `"no longer available to new users"`) — se cambió a `gemini-flash-latest` (verificado en logs de producción tras el fix).
 - [x] **Fix (2026-08-10) — no redirigía tras crear la solicitud**: ahora `router.push("/cliente/solicitudes")` después de un submit exitoso, en vez de dejar al cliente en la misma pantalla.
@@ -90,7 +91,7 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 
 ### Prioridad alta
 
-- [ ] Flujo de presupuestos (`quotes`): privados, protección contra duplicados, aceptación por el cliente. Bloquea varias cosas: la revelación condicional de dirección exacta, el cobro/pago, y la feature de validación de comprobantes pedida por Pablo (ver abajo).
+- [x] ~~Flujo de presupuestos (`quotes`)~~ — implementado 2026-08-11, ver "Solicitudes y oportunidades" arriba. Sigue bloqueando la revelación condicional de dirección exacta, el cobro/pago, y la validación de comprobantes pedida por Pablo (ver abajo) — nada de eso se encaró todavía.
 - [ ] Subir fotos/videos/audios de la solicitud a Cloud Storage antes de crear la solicitud (hoy el form valida pero envía `media: []`).
 - [ ] **Revelación condicional de dirección exacta**: solo si `status === "accepted" && paymentConfirmed`.
 - [ ] **Filtrado por proximidad real** (geohash/`geofirestore`) — hoy solo filtra por oficio/cobertura declarada, no distancia.
@@ -149,9 +150,9 @@ npm run build
 app/                        Rutas, páginas y endpoints de Next.js
   api/
     profile/                GET/PUT perfil (por rol activo), photo/ (subida de foto)
-    requests/                Alta y listado de solicitudes, [id]/start, [id]/complete, [id]/triage
+    requests/                Alta y listado de solicitudes, [id]/start, [id]/complete, [id]/triage, [id]/quotes (+ [quoteId]/accept)
     session/                 POST setActiveRole + cookie __session, DELETE logout
-  cliente/                  Mis solicitudes, nueva solicitud
+  cliente/                  Mis solicitudes, nueva solicitud, [id] (detalle + presupuestos recibidos)
   profesional/              Oportunidades (listado + detalle)
   perfil/                   Perfil de cliente o profesional segun rol activo
   login/                    Login + alta, email/password y Google, selector de rol
