@@ -351,8 +351,13 @@ export default function PerfilPage() {
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, coverage: event.target.value }))
                 }
+                placeholder="Ej: San Isidro, Vicente López"
                 className="rounded border border-[#181713]/20 px-3 py-2"
               />
+              <span className="text-xs text-[#777166]">
+                No hace falta que coincida exacto con mayúsculas ni tildes, pero tiene que ser el
+                nombre de la localidad (no del barrio ni del partido).
+              </span>
             </label>
           </>
         )}

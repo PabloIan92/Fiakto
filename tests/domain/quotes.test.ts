@@ -17,4 +17,25 @@ describe("private opportunity matching", () => {
       ),
     ).toBe(false);
   });
+
+  it("matches coverage regardless of case, accents or surrounding whitespace", () => {
+    expect(
+      canProfessionalViewRequest(
+        { trade: "plomeria", province: "Buenos Aires", locality: "San Isidro" },
+        { verified: true, trades: ["plomeria"], coverage: [" san isidro "] },
+      ),
+    ).toBe(true);
+    expect(
+      canProfessionalViewRequest(
+        { trade: "plomeria", province: "Córdoba", locality: "Córdoba" },
+        { verified: true, trades: ["plomeria"], coverage: ["CORDOBA"] },
+      ),
+    ).toBe(true);
+    expect(
+      canProfessionalViewRequest(
+        { trade: "plomeria", province: "Buenos Aires", locality: "Lanús" },
+        { verified: true, trades: ["plomeria"], coverage: ["Lomas de Zamora"] },
+      ),
+    ).toBe(false);
+  });
 });
