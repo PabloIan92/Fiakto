@@ -56,7 +56,12 @@ export default function MisSolicitudesPage() {
   useEffect(() => {
     if (!ready || !user) return;
     void loadRequests(user);
-  }, [user]);
+    // `ready` faltaba de esta lista: si `user` queda seteado antes de que
+    // `role` resuelva (ready todavía false), el efecto corre una vez, sale
+    // temprano por el guard de arriba, y nunca se vuelve a ejecutar cuando
+    // `ready` pasa a true después — la página queda colgada en "Cargando…"
+    // para siempre, sin ningún pedido de red.
+  }, [ready, user]);
 
   async function loadRequests(currentUser: NonNullable<typeof user>) {
     const token = await currentUser.getIdToken();

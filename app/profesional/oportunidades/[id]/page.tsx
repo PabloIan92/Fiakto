@@ -49,7 +49,12 @@ export default function OportunidadDetallePage() {
       setOpportunity((await response.json()) as OpportunityDetail);
       setStatus("ok");
     })();
-  }, [user, params.id, reloadIndex]);
+    // `ready` faltaba de esta lista — mismo bug que en
+    // app/profesional/oportunidades/client.tsx y
+    // app/cliente/solicitudes/client.tsx: si `user` se setea antes de que
+    // `role` resuelva, el efecto corre una vez, sale temprano, y nunca se
+    // reintenta cuando `ready` pasa a true.
+  }, [ready, user, params.id, reloadIndex]);
 
   async function handleStart() {
     if (!user) return;

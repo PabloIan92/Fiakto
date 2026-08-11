@@ -51,7 +51,13 @@ export default function OportunidadesPage() {
         setOpportunities([]);
       }
     })();
-  }, [user]);
+    // `ready` faltaba de esta lista: si `user` queda seteado antes de que
+    // `role` resuelva (ready todavía false), el efecto corre una vez, sale
+    // temprano por el guard de arriba, y nunca se vuelve a ejecutar cuando
+    // `ready` pasa a true después — la página queda colgada en "Cargando…"
+    // para siempre, sin ningún pedido de red. Coincide con lo reportado:
+    // a veces cuelga, a veces no, dependiendo de qué orden resuelvan.
+  }, [ready, user]);
 
   if (blockedMinor) {
     return (
