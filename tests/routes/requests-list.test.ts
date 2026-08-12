@@ -47,6 +47,7 @@ function dependencies(
     profileRepository: {
       get: async (userId: string) => profiles[userId] ?? null,
       upsert: async () => undefined,
+      setPhotoPath: async () => undefined,
     },
   };
 }

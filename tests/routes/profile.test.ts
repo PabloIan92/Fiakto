@@ -22,6 +22,7 @@ function dependencies(actor: { id: string; role: "customer" | "professional" | "
         upsert: async (profile: UserProfile) => {
           stored.set(key(profile.userId, profile.role), profile);
         },
+        setPhotoPath: async () => undefined,
       },
       now: () => FIXED_NOW,
     },

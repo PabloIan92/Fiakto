@@ -46,6 +46,7 @@ describe("GET /api/requests/[id]", () => {
         get: async () =>
           ({ userId: "pro-1", role: "professional", phone: "1", trades: ["electricidad"], coverage: ["Lanús"] }) as UserProfile,
         upsert: async () => undefined,
+        setPhotoPath: async () => undefined,
       },
     });
 
@@ -66,6 +67,7 @@ describe("GET /api/requests/[id]", () => {
         get: async () =>
           ({ userId: "pro-1", role: "professional", phone: "1", trades: ["plomeria"], coverage: ["Lanús"] }) as UserProfile,
         upsert: async () => undefined,
+        setPhotoPath: async () => undefined,
       },
     });
 
@@ -94,6 +96,7 @@ describe("GET /api/requests/[id]", () => {
         get: async () =>
           ({ userId: "pro-1", role: "professional", phone: "1", trades: ["electricidad"], coverage: ["Otra"] }) as UserProfile,
         upsert: async () => undefined,
+        setPhotoPath: async () => undefined,
       },
     });
 
@@ -112,7 +115,7 @@ describe("GET /api/requests/[id]", () => {
         listByProfessional: async () => [],
         get: async () => null,
       },
-      profileRepository: { get: async () => null, upsert: async () => undefined },
+      profileRepository: { get: async () => null, upsert: async () => undefined, setPhotoPath: async () => undefined },
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
@@ -135,6 +138,7 @@ describe("GET /api/requests/[id]", () => {
         get: async () =>
           ({ userId: "pro-1", role: "professional", phone: "1", trades: ["plomeria"], coverage: ["Lanús"] }) as UserProfile,
         upsert: async () => undefined,
+        setPhotoPath: async () => undefined,
       },
     });
 
@@ -151,7 +155,7 @@ describe("GET /api/requests/[id]", () => {
         listByProfessional: async () => [],
         get: async () => null,
       },
-      profileRepository: { get: async () => null, upsert: async () => undefined },
+      profileRepository: { get: async () => null, upsert: async () => undefined, setPhotoPath: async () => undefined },
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
