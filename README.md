@@ -14,9 +14,10 @@ Fiakto es un marketplace argentino para contratar profesionales verificados. Los
   firebase deploy --only apphosting --project fiakto
   ```
   El Firebase CLI no está instalado global en esta máquina, está cacheado vía npx en `C:\Users\Lemmon\AppData\Local\npm-cache\_npx\ba4f1959e38407b5\node_modules\firebase-tools` — invocarlo con `node <esa-ruta>/lib/bin/firebase.js <comando>` (o `npx firebase-tools@latest <comando>` si esa ruta ya no existe).
-- **No hardcodear secretos.** `GEMINI_API_KEY` y (a futuro) el alias/CBU de cobro van en Secret Manager y se referencian en `apphosting.yaml` — nunca en texto plano en el repo, aunque ahora sea privado.
+- **No hardcodear secretos.** `GEMINI_API_KEY` y `TELEGRAM_BOT_TOKEN` van en Secret Manager y se referencian en `apphosting.yaml` — nunca en texto plano en el repo, aunque ahora sea privado. El alias de cobro (`NEXT_PUBLIC_FIAKTO_PAYMENT_ALIAS`) no es secreto (se muestra al cliente en pantalla), va como valor plano.
 - **Patrón de bugs repetido en esta sesión:** varias veces la funcionalidad ya estaba bien implementada pero no había forma de *encontrarla* desde la navegación (no había link a `/login` desde la home, no había link a `/perfil` desde ningún lado, `/perfil` no tenía forma de volver atrás, el mapa era interactivo pero no lo decía en ningún lado). Antes de dar por buena una pantalla nueva: ¿hay cómo llegar? ¿hay cómo volver? ¿es obvio qué se puede clickear?
 - **Verificá siempre que tu clon local coincida con `origin/main` antes de diagnosticar nada.** El 2026-08-10 una sesión completa (36 commits) se hizo por error sobre una carpeta local cuya historia de git había divergido de GitHub desde el 3 de agosto y nunca se pusheó — se "arreglaron" bugs sobre código que no era el que estaba desplegado. Antes de investigar cualquier bug: `git fetch && git log HEAD..origin/main` (y viceversa); si hay commits de un lado que el otro no tiene, `origin/main` es la fuente de verdad, no asumas que tu carpeta está al día solo porque no tenés cambios sin commitear.
+- **Esa misma rama divergente (`backup/local-divergent-2026-08-10`, todavía en el repo local, nunca en GitHub) tenía trabajo real que se creía en producción y no lo estaba**: disputas/Telegram, panel admin y pago por transferencia con comisión, hechos el 2026-08-04/06, quedaron atrapados ahí y nunca llegaron a `main`. Se rescataron/reimplementaron el 2026-08-12 sobre el `main` actual (que para entonces ya tenía el flujo de presupuestos, distinto al de esa rama) — ver "Disputas y pagos" abajo. Antes de asumir que algo "ya está hecho" porque quedó anotado en una sesión anterior, confirmá que el código sigue en `main`, no solo que existe en algún lado del disco.
 
 ## Arquitectura de roles (clave para no romper nada)
 
@@ -59,6 +60,15 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 - [x] `/profesional/oportunidades` (listado filtrado por oficio/cobertura vía `canProfessionalViewRequest`) + detalle, siempre oculta `exactAddress`.
 - [x] **SLA / Ventana de reparación**: estados `in_progress`/`completed`, `slaDeadline` según `riskLevel` del triage (emergencia 4h, urgente 24h, normal 72h), endpoints `POST /api/requests/[id]/start` y `/complete`.
 - [x] **Flujo de presupuestos (2026-08-11)**: `QuoteSchema` y los estados `"quoted"`/`"accepted"` ya existían en el dominio pero nada los usaba — cualquier profesional que matcheaba oficio/cobertura podía iniciar el trabajo directamente. Ahora: el profesional envía un presupuesto privado (`POST /api/requests/[id]/quotes`, mano de obra + materiales + descripción + horas estimadas; bloqueado si ya envió uno para esa solicitud, o si el estado ya no acepta presupuestos), varios profesionales pueden competir por la misma solicitud (`listOpen()` incluye `"open"` y `"quoted"`), el cliente ve todos los presupuestos recibidos en la nueva página `/cliente/solicitudes/[id]` (no existía antes; el listado ahora linkea ahí) y acepta uno (`POST .../quotes/[quoteId]/accept`), lo que rechaza los demás pendientes y asigna la solicitud (`status: "accepted"`, `professionalId`). `POST /api/requests/[id]/start` ya no acepta a cualquier profesional matcheante: exige `status === "accepted" && professionalId === actor.id`. Probado de punta a punta en staging (publicar → 2 profesionales pueden ver la misma solicitud → presupuestar → aceptar → "Iniciar trabajo" solo para el ganador → "En reparación" con SLA).
+
+**Disputas y pagos (rescatado/reimplementado 2026-08-12 — ver nota de la rama divergente arriba):**
+- [x] **Comisión Fiakto del 8%** (`SERVICE_FEE_RATE`/`computeQuoteBreakdown`, `src/domain/quotes.ts`): al aceptar un presupuesto, el cliente ahora elige método de pago ("Aceptar y pagar en efectivo" / "Aceptar y transferir a Fiakto") en `/cliente/solicitudes/[id]`; `POST .../quotes/[quoteId]/accept` exige `paymentMethod` en el body, calcula subtotal+comisión+total y lo guarda (`recordPayment` en `RequestRepository`). "Efectivo" nunca toca una cuenta de Fiakto; "transfer" deja `payoutStatus: "pending"`.
+- [x] **Pago por transferencia**: el cliente ve el alias (`NEXT_PUBLIC_FIAKTO_PAYMENT_ALIAS`) y sube un comprobante (`POST /api/requests/[id]/payment-receipt`, mismo patrón base64 que la foto de perfil). Un admin ve el comprobante y marca "Ya le pagué al profesional" en `/admin/pagos` (`GET /api/admin/payments`, `POST /api/admin/payments/[id]/settle`) — ahí es donde Fiakto efectivamente retiene la comisión con un registro real, no solo una captura externa de Mercado Pago/Ualá.
+- [x] **Revelación condicional de dirección exacta**: `isPaymentConfirmed` (`src/domain/requests.ts`) — el profesional asignado ve `exactAddress` solo si el pago está confirmado (efectivo: inmediato al aceptar, ya que necesita la dirección para ir a trabajar; transferencia: recién con comprobante subido, **no** espera a que el admin liquide — liquidar es contabilidad interna de Fiakto, no una condición para que el profesional pueda ir). Antes de esto la dirección exacta nunca se revelaba a nadie más que al cliente.
+- [x] **Sistema de disputas**: cliente o profesional asignado pueden reportar un problema (`POST /api/requests/[id]/report`, botón "¿Algo salió mal?" en `/cliente/solicitudes/[id]` y `/profesional/oportunidades/[id]`) una vez que hay un compromiso aceptado. Se guarda en Firestore (`reports`), dispara una alerta best-effort a Telegram (`src/server/telegram.ts`, nunca bloquea el flujo si falla) y un admin lo resuelve con una nota en `/admin/reportes` (`GET /api/admin/reports`, `POST /api/admin/reports/[id]/resolve`).
+- [x] **Rol admin**: no se elige en el selector de `/login` (no hay botón para eso) — se otorga por fuera de la app con `node scripts/grant-admin.mjs <email>` (requiere credenciales que esta máquina no tiene configuradas, ver más abajo). `POST /api/session` nunca degrada un claim `admin` existente aunque el idToken todavía diga `customer`/`professional` de una sesión vieja.
+- [ ] **Pendiente para que las alertas de Telegram funcionen**: crear/confirmar el secreto `TELEGRAM_BOT_TOKEN` en Secret Manager del proyecto `fiakto` y completar `TELEGRAM_CHAT_ID` en `apphosting.yaml` (hoy vacío) con el chat real de `@fiakto_alertas_bot`. Sin esto, `sendTelegramAlert` no hace nada (best-effort) pero el reporte se guarda igual y aparece en `/admin/reportes`.
+- [ ] **Pendiente para poder entrar a `/admin/*`**: correr `gcloud auth application-default login` + `node scripts/grant-admin.mjs pabloianlaurino@gmail.com` (o el email que corresponda) desde una máquina con esas credenciales — no se pudo ejecutar en esta sesión.
 - [x] Listas blindadas contra solicitudes viejas sin `location` (datos de antes de que el campo fuera obligatorio) — muestran "Ubicación no disponible" en vez de crashear.
 - [x] **Fix (2026-08-10) — solicitudes quedaban en "Borrador" para siempre**: `app/cliente/solicitudes/nueva/page.tsx` creaba la solicitud (`POST /api/requests`) pero nunca llamaba al endpoint de triage (`POST /api/requests/[id]/triage`) — el documento nacía en `status: "draft"` y nada volvía a tocarlo. Se agregó la llamada al triage justo después de crear, más un botón "Reintentar análisis" en `/cliente/solicitudes` para las que ya habían quedado colgadas. De paso se encontró que `gemini-triage-provider.ts` usaba el modelo `gemini-2.5-flash`, deprecado para esta API key (404 `"no longer available to new users"`) — se cambió a `gemini-flash-latest` (verificado en logs de producción tras el fix).
 - [x] **Fix (2026-08-10) — no redirigía tras crear la solicitud**: ahora `router.push("/cliente/solicitudes")` después de un submit exitoso, en vez de dejar al cliente en la misma pantalla.
@@ -91,20 +101,20 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 
 ### Prioridad alta
 
-- [x] ~~Flujo de presupuestos (`quotes`)~~ — implementado 2026-08-11, ver "Solicitudes y oportunidades" arriba. Sigue bloqueando la revelación condicional de dirección exacta, el cobro/pago, y la validación de comprobantes pedida por Pablo (ver abajo) — nada de eso se encaró todavía.
+- [x] ~~Flujo de presupuestos (`quotes`)~~ — implementado 2026-08-11.
+- [x] ~~Comisión Fiakto, pago por transferencia, revelación condicional de dirección, disputas~~ — rescatado/reimplementado 2026-08-12, ver "Disputas y pagos" arriba.
+- [x] ~~`npx tsc --noEmit` con errores preexistentes en mocks de `ProfileRepository`~~ — arreglado 2026-08-12.
+- [x] ~~Race condition: `GET /api/requests` podía devolver 401 justo después del signup~~ — arreglado 2026-08-12 (era más serio de lo que parecía: la cookie de sesión podía no llegar a fijarse nunca, no solo tardar; ver `syncSessionUntilReady` en `src/client/session-sync.ts`).
 - [ ] Subir fotos/videos/audios de la solicitud a Cloud Storage antes de crear la solicitud (hoy el form valida pero envía `media: []`).
-- [ ] **Revelación condicional de dirección exacta**: solo si `status === "accepted" && paymentConfirmed`.
 - [ ] **Filtrado por proximidad real** (geohash/`geofirestore`) — hoy solo filtra por oficio/cobertura declarada, no distancia.
 - [ ] Identidad verificada del profesional (no se chequea al filtrar oportunidades).
 - [ ] Enforcement real de "foto obligatoria" para profesional (hoy es obligatoria en la UI pero nada bloquea aparecer en oportunidades sin ella).
-- [ ] Race condition menor: `GET /api/requests` puede devolver 401 una vez justo después del signup (la cookie de sesión tarda un instante en sincronizarse) — no rompe nada visible pero es un error real en consola.
 - [ ] Configurar Firebase Emulator Suite, o generar credenciales de Application Default Credentials, para poder probar `npm run dev` local sin depender de staging.
 - [ ] Pruebas Playwright end-to-end (hoy la cobertura es unitaria/Vitest).
-- [ ] `npx tsc --noEmit` tiene errores preexistentes (no introducidos el 2026-08-10, confirmado con `git log` que datan de `57f676b`) en `tests/routes/profile.test.ts`, `request-detail.test.ts`, `request-start.test.ts`, `requests-list.test.ts`: sus mocks inline de `ProfileRepository` no implementan `setPhotoPath`, que la interfaz real exige desde ese commit. No bloquea `npm run validate` porque usa Vitest, no `tsc`, pero conviene limpiarlo.
 
 ### Feature pedida por Pablo, todavía sin encarar: validación de comprobante de transferencia con Gemini
 
-Cuando el cliente paga por transferencia, debe subir el comprobante y Gemini tiene que verificar: (1) que sea realmente un comprobante y no otra cosa, (2) que la transferencia sea al alias/CBU correcto, (3) que la fecha sea del mismo día, (4) que el importe coincida con lo pedido. **Bloqueada** hasta que exista el flujo de presupuestos (para saber el importe esperado) y una decisión de dónde vive el alias esperado por profesional/plataforma. El alias/CBU real de Pablo fue compartido en el chat de una sesión anterior — **va a Secret Manager cuando se implemente, nunca hardcodeado**.
+Cuando el cliente sube el comprobante de transferencia (ver "Disputas y pagos" arriba — la subida y el panel admin de liquidación ya existen), Gemini tiene que verificar: (1) que sea realmente un comprobante y no otra cosa, (2) que la transferencia sea al alias/CBU correcto, (3) que la fecha sea del mismo día, (4) que el importe coincida con lo pedido, y confirmar automáticamente en vez de depender de que un admin lo mire a mano. **Ya no está bloqueada** (el flujo de presupuestos, el importe esperado y el alias ya existen) — quedó sin encarar en la sesión del 2026-08-12 por decisión explícita de priorizar el resto del backlog técnico primero. El alias real de Pablo (`fiakto`) ya está en `NEXT_PUBLIC_FIAKTO_PAYMENT_ALIAS` (no es secreto, se muestra en pantalla); si en el futuro se agrega un CBU, ese sí va a Secret Manager.
 
 ### Después del MVP
 
@@ -150,19 +160,23 @@ npm run build
 app/                        Rutas, páginas y endpoints de Next.js
   api/
     profile/                GET/PUT perfil (por rol activo), photo/ (subida de foto)
-    requests/                Alta y listado de solicitudes, [id]/start, [id]/complete, [id]/triage, [id]/quotes (+ [quoteId]/accept)
+    requests/                Alta y listado de solicitudes, [id]/start, [id]/complete, [id]/triage,
+                             [id]/quotes (+ [quoteId]/accept), [id]/report, [id]/payment-receipt
+    admin/                   reports/ (+ [id]/resolve), payments/ (+ [id]/settle) — gateado por role==="admin"
     session/                 POST setActiveRole + cookie __session, DELETE logout
-  cliente/                  Mis solicitudes, nueva solicitud, [id] (detalle + presupuestos recibidos)
-  profesional/              Oportunidades (listado + detalle)
+  cliente/                  Mis solicitudes, nueva solicitud, [id] (detalle + presupuestos + pago + reportar)
+  profesional/              Oportunidades (listado + detalle + reportar)
+  admin/                    reportes/ (disputas), pagos/ (liquidar transferencias) — solo role==="admin"
   perfil/                   Perfil de cliente o profesional segun rol activo
   login/                    Login + alta, email/password y Google, selector de rol
   providers/                AuthProvider (useAuth, useRoleGuard)
   components/               MapPicker, ApproximateMap, AppHeader, ServiceWorkerCleanup
   (public)/                 Home publica (con link a /login)
 src/
-  client/                   Firebase client SDK, session-sync, pending-role (managed login)
-  domain/                   Esquemas Zod (requests, triage, quotes, location, profile)
-  server/                   Firebase admin, auth, auditoria, Gemini, repositorios, media
+  client/                   Firebase client SDK, session-sync (syncSessionUntilReady), pending-role
+  domain/                   Esquemas Zod (requests, triage, quotes, location, profile, reports)
+  server/                   Firebase admin, auth, auditoria, Gemini, repositorios, media, telegram
+scripts/                    grant-admin.mjs (otorgar role="admin" a una cuenta, requiere ADC)
 tests/                      Pruebas unitarias, de rutas y de interfaz (Vitest)
 docs/legal/                 Terminos, privacidad, arbitraje, DMCA (borradores)
 firebase.json, apphosting.yaml   Config de Firebase App Hosting (backend fiakto-staging)

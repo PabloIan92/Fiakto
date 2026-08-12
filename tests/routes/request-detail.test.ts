@@ -191,4 +191,74 @@ describe("GET /api/requests/[id]", () => {
     const body = await response.json();
     expect(body).toMatchObject({ status: "accepted", professionalId: "pro-2" });
   });
+
+  it("hides exactAddress from the assigned professional until the payment is confirmed", async () => {
+    const acceptedNotPaid = {
+      ...openInLanus,
+      status: "accepted" as const,
+      professionalId: "pro-1",
+      payment: { method: "transfer" as const, subtotalArs: 25000, feeArs: 2000, amountArs: 27000 },
+    };
+    const handler = createRequestGetHandler({
+      authenticate: async () => ({ id: "pro-1", role: "professional" }),
+      repository: {
+        listByCustomer: async () => [],
+        listOpen: async () => [],
+        listByProfessional: async () => [acceptedNotPaid],
+        get: async () => null,
+      },
+      profileRepository: { get: async () => null, upsert: async () => undefined, setPhotoPath: async () => undefined },
+    });
+
+    const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
+    const body = await response.json();
+    expect(body.location).not.toHaveProperty("exactAddress");
+  });
+
+  it("reveals exactAddress to the assigned professional once a transfer receipt was submitted", async () => {
+    const acceptedAndPaid = {
+      ...openInLanus,
+      status: "accepted" as const,
+      professionalId: "pro-1",
+      payment: { method: "transfer" as const, subtotalArs: 25000, feeArs: 2000, amountArs: 27000 },
+      paymentReceipt: { storagePath: "payment-receipts/request-1.jpg", mimeType: "image/jpeg" as const },
+    };
+    const handler = createRequestGetHandler({
+      authenticate: async () => ({ id: "pro-1", role: "professional" }),
+      repository: {
+        listByCustomer: async () => [],
+        listOpen: async () => [],
+        listByProfessional: async () => [acceptedAndPaid],
+        get: async () => null,
+      },
+      profileRepository: { get: async () => null, upsert: async () => undefined, setPhotoPath: async () => undefined },
+    });
+
+    const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
+    const body = await response.json();
+    expect(body.location.exactAddress).toBe("Calle Falsa 123");
+  });
+
+  it("reveals exactAddress to the assigned professional immediately for a cash payment", async () => {
+    const acceptedCash = {
+      ...openInLanus,
+      status: "accepted" as const,
+      professionalId: "pro-1",
+      payment: { method: "cash" as const, subtotalArs: 25000, feeArs: 2000, amountArs: 27000 },
+    };
+    const handler = createRequestGetHandler({
+      authenticate: async () => ({ id: "pro-1", role: "professional" }),
+      repository: {
+        listByCustomer: async () => [],
+        listOpen: async () => [],
+        listByProfessional: async () => [acceptedCash],
+        get: async () => null,
+      },
+      profileRepository: { get: async () => null, upsert: async () => undefined, setPhotoPath: async () => undefined },
+    });
+
+    const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
+    const body = await response.json();
+    expect(body.location.exactAddress).toBe("Calle Falsa 123");
+  });
 });

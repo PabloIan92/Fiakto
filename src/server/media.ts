@@ -84,3 +84,24 @@ export async function createRequestMediaUploadUrls(
     }),
   );
 }
+
+// Comprobante de transferencia: mismo patron que uploadProfilePhoto (una
+// sola imagen chica en base64, sin necesidad de signed URLs de escritura),
+// una por solicitud.
+export async function uploadPaymentReceipt(
+  requestId: string,
+  buffer: Buffer,
+  contentType: string,
+): Promise<string> {
+  if (!ALLOWED_PHOTO_TYPES.has(contentType)) {
+    throw new Error("Tipo de archivo no permitido");
+  }
+  if (buffer.byteLength > MAX_PHOTO_BYTES) {
+    throw new Error("La imagen supera el tamaño máximo permitido");
+  }
+
+  const extension = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
+  const storagePath = `payment-receipts/${requestId}.${extension}`;
+  await bucket().file(storagePath).save(buffer, { contentType });
+  return storagePath;
+}

@@ -80,6 +80,20 @@ describe("POST /api/session", () => {
     expect(response.status).toBe(400);
   });
 
+  it("never downgrades an admin account, even if a stale token requests customer/professional", async () => {
+    const { deps, rolesAssigned } = dependencies({ uid: "admin-1", role: "admin" });
+    const response = await createSessionPostHandler(deps)(
+      new Request("http://localhost/api/session", {
+        method: "POST",
+        body: JSON.stringify({ idToken: "valid-token", requestedRole: "customer" }),
+      }),
+    );
+
+    await expect(response.json()).resolves.toEqual({ needsRefresh: false, role: "admin" });
+    expect(rolesAssigned).toEqual([]);
+    expect(response.headers.get("set-cookie")).toContain("__session=valid-token");
+  });
+
   it("sets a long-lived session cookie once the token carries the requested role", async () => {
     const { deps } = dependencies({ uid: "user-1", role: "customer" });
     const response = await createSessionPostHandler(deps)(

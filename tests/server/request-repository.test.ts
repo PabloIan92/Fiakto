@@ -65,6 +65,55 @@ class FakeRequestRepository implements RequestRepository {
     if (!stored) throw new Error("Request not found");
     this.requests.set(id, { ...stored, request: { ...stored.request, ...input } });
   }
+
+  async recordPayment(
+    id: string,
+    input: {
+      acceptedQuoteId: string;
+      paymentMethod: "cash" | "transfer";
+      subtotalArs: number;
+      feeArs: number;
+      amountArs: number;
+    },
+  ) {
+    const stored = this.requests.get(id);
+    if (!stored) throw new Error("Request not found");
+    this.requests.set(id, {
+      ...stored,
+      request: {
+        ...stored.request,
+        acceptedQuoteId: input.acceptedQuoteId,
+        payment: {
+          method: input.paymentMethod,
+          subtotalArs: input.subtotalArs,
+          feeArs: input.feeArs,
+          amountArs: input.amountArs,
+        },
+        ...(input.paymentMethod === "transfer" ? { payoutStatus: "pending" as const } : {}),
+      },
+    });
+  }
+
+  async submitPaymentReceipt(id: string, receipt: { storagePath: string; mimeType: string }) {
+    const stored = this.requests.get(id);
+    if (!stored) throw new Error("Request not found");
+    this.requests.set(id, {
+      ...stored,
+      request: { ...stored.request, paymentReceipt: receipt as ServiceRequest["paymentReceipt"] },
+    });
+  }
+
+  async listPendingPayouts() {
+    return [...this.requests.entries()]
+      .filter(([, value]) => value.request.payoutStatus === "pending")
+      .map(([id, value]) => ({ id, ...value.request }));
+  }
+
+  async settlePayout(id: string) {
+    const stored = this.requests.get(id);
+    if (!stored) throw new Error("Request not found");
+    this.requests.set(id, { ...stored, request: { ...stored.request, payoutStatus: "settled" } });
+  }
 }
 
 const baseRequest: ServiceRequest = {
@@ -128,6 +177,13 @@ class FakeFirestore {
           const data = this.seeded.get(id);
           return { exists: data !== undefined, id, data: () => data };
         },
+      }),
+      where: (field: string, _op: string, value: unknown) => ({
+        get: async () => ({
+          docs: [...this.seeded.entries()]
+            .filter(([, data]) => data[field] === value)
+            .map(([id, data]) => ({ id, data: () => data })),
+        }),
       }),
     };
   }
@@ -222,6 +278,73 @@ describe("FirestoreRequestRepository", () => {
       collection: "requests",
       id: "request-7",
       data: { status: "accepted", professionalId: "pro-1" },
+    });
+  });
+
+  it("records a cash payment without a payoutStatus (never touches a Fiakto account)", async () => {
+    const firestore = new FakeFirestore();
+    const repository = new FirestoreRequestRepository(firestore);
+    await repository.recordPayment("request-7", {
+      acceptedQuoteId: "quote-1",
+      paymentMethod: "cash",
+      subtotalArs: 10000,
+      feeArs: 800,
+      amountArs: 10800,
+    });
+
+    expect(firestore.updated[0]?.data).toMatchObject({
+      acceptedQuoteId: "quote-1",
+      payment: { method: "cash", subtotalArs: 10000, feeArs: 800, amountArs: 10800 },
+    });
+    expect(firestore.updated[0]?.data).not.toHaveProperty("payoutStatus");
+  });
+
+  it("records a transfer payment with payoutStatus pending", async () => {
+    const firestore = new FakeFirestore();
+    const repository = new FirestoreRequestRepository(firestore);
+    await repository.recordPayment("request-7", {
+      acceptedQuoteId: "quote-1",
+      paymentMethod: "transfer",
+      subtotalArs: 10000,
+      feeArs: 800,
+      amountArs: 10800,
+    });
+
+    expect(firestore.updated[0]?.data).toMatchObject({ payoutStatus: "pending" });
+  });
+
+  it("lists only requests with a pending payout", async () => {
+    const firestore = new FakeFirestore();
+    firestore.seed("request-7", { ...baseRequest, payoutStatus: "pending" });
+    firestore.seed("request-8", { ...baseRequest, payoutStatus: "settled" });
+    const repository = new FirestoreRequestRepository(firestore);
+
+    const pending = await repository.listPendingPayouts();
+    expect(pending.map((item) => item.id)).toEqual(["request-7"]);
+  });
+
+  it("marks a payout as settled", async () => {
+    const firestore = new FakeFirestore();
+    const repository = new FirestoreRequestRepository(firestore);
+    await repository.settlePayout("request-7");
+
+    expect(firestore.updated[0]).toMatchObject({
+      collection: "requests",
+      id: "request-7",
+      data: { payoutStatus: "settled" },
+    });
+  });
+
+  it("stores a submitted payment receipt", async () => {
+    const firestore = new FakeFirestore();
+    const repository = new FirestoreRequestRepository(firestore);
+    await repository.submitPaymentReceipt("request-7", {
+      storagePath: "payment-receipts/request-7.jpg",
+      mimeType: "image/jpeg",
+    });
+
+    expect(firestore.updated[0]?.data).toMatchObject({
+      paymentReceipt: { storagePath: "payment-receipts/request-7.jpg", mimeType: "image/jpeg" },
     });
   });
 });
