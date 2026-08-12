@@ -30,7 +30,7 @@ export default function NewRequestPage() {
   const { ready } = useRoleGuard("customer", "/profesional/oportunidades");
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "uploading" | "sending" | "done" | "error">("idle");
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [province, setProvince] = useState("Buenos Aires");
   const [locality, setLocality] = useState("");
@@ -99,9 +99,50 @@ export default function NewRequestPage() {
     }
     setStatus("sending");
     const form = new FormData(event.currentTarget);
+    const token = await user!.getIdToken();
+    const authHeaders = { authorization: `Bearer ${token}` } as const;
+
+    // Los archivos se suben directo a Storage via signed URLs de escritura
+    // (POST /api/requests/media devuelve las URLs), no embebidos en el body
+    // del POST a /api/requests: pueden pesar hasta 20MB y romperian el limite
+    // de payload de la route. Si cualquier PUT falla, no creamos la solicitud.
+    let media: Array<{ storagePath: string; mimeType: string }> = [];
+    if (files.length > 0) {
+      setStatus("uploading");
+      const uploadUrlsResponse = await fetch("/api/requests/media", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...authHeaders },
+        body: JSON.stringify({ files: files.map((file) => ({ mimeType: file.type })) }),
+      });
+      if (!uploadUrlsResponse.ok) {
+        setFileError("No pudimos preparar la subida de los archivos. Intentá nuevamente.");
+        setStatus("error");
+        return;
+      }
+      const { media: uploadSlots } = (await uploadUrlsResponse.json()) as {
+        media: Array<{ storagePath: string; uploadUrl: string; mimeType: string }>;
+      };
+      const uploadResponses = await Promise.all(
+        uploadSlots.map((slot, index) =>
+          fetch(slot.uploadUrl, {
+            method: "PUT",
+            headers: { "content-type": files[index]?.type ?? slot.mimeType },
+            body: files[index],
+          }),
+        ),
+      );
+      if (uploadResponses.some((r) => !r.ok)) {
+        setFileError("Algunos archivos no se subieron. Revisá tu conexión e intentá nuevamente.");
+        setStatus("error");
+        return;
+      }
+      media = uploadSlots.map(({ storagePath, mimeType }) => ({ storagePath, mimeType }));
+      setStatus("sending");
+    }
+
     const response = await fetch("/api/requests", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...authHeaders },
       body: JSON.stringify({
         description: form.get("description"),
         location: {
@@ -111,7 +152,7 @@ export default function NewRequestPage() {
           province,
           locality,
         },
-        media: [],
+        media,
       }),
     });
     if (!response.ok) {
@@ -294,10 +335,10 @@ export default function NewRequestPage() {
           <div className="mt-8 border-t border-[#181713]/15 pt-6">
             <button
               type="submit"
-              disabled={status === "sending" || Boolean(fileError) || !location}
+              disabled={status === "uploading" || status === "sending" || Boolean(fileError) || !location}
               className="w-full bg-[#dc4b2f] px-6 py-4 text-base font-black text-white transition hover:bg-[#bd351f] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {status === "sending" ? "Analizando…" : "Analizar solicitud"}
+              {status === "uploading" ? "Subiendo archivos…" : status === "sending" ? "Analizando…" : "Analizar solicitud"}
             </button>
             <p aria-live="polite" className="mt-3 min-h-5 text-center text-xs font-semibold">
               {status === "done" && "Solicitud creada. Ya podemos analizarla."}

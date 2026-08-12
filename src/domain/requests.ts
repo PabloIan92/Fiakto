@@ -2,15 +2,17 @@ import { z } from "zod";
 
 import { TriageResultSchema } from "@/src/domain/triage";
 
+export const MediaMimeTypeSchema = z.enum([
+  "image/jpeg",
+  "image/png",
+  "video/mp4",
+  "audio/mpeg",
+  "audio/mp4",
+]);
+
 export const MediaSchema = z.object({
   storagePath: z.string().min(1),
-  mimeType: z.enum([
-    "image/jpeg",
-    "image/png",
-    "video/mp4",
-    "audio/mpeg",
-    "audio/mp4",
-  ]),
+  mimeType: MediaMimeTypeSchema,
 });
 
 export const LocationSchema = z.object({
