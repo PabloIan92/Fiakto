@@ -27,3 +27,29 @@ env:
     availability:
       - BUILD
       - RUNTIME
+
+  # Alias de la cuenta de Fiakto para "Aceptar y transferir a Fiakto" — no
+  # es secreto (se muestra al cliente en pantalla), se embebe en el bundle
+  # igual que la config de Firebase de arriba.
+  - variable: NEXT_PUBLIC_FIAKTO_PAYMENT_ALIAS
+    value: "fiakto"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Alerta de disputas por Telegram (ver src/server/telegram.ts): sin estas
+  # dos variables, sendTelegramAlert no hace nada (best-effort, nunca
+  # bloquea el flujo) — el reporte igual queda guardado en Firestore y
+  # visible en /admin/reportes. TELEGRAM_BOT_TOKEN debe existir como secreto
+  # en Secret Manager del proyecto "fiakto" (mismo mecanismo que
+  # GEMINI_API_KEY arriba); TELEGRAM_CHAT_ID no es secreto pero hoy no tiene
+  # valor real cargado — completar con el chat_id de @fiakto_alertas_bot.
+  - variable: TELEGRAM_BOT_TOKEN
+    secret: TELEGRAM_BOT_TOKEN
+    availability:
+      - RUNTIME
+
+  - variable: TELEGRAM_CHAT_ID
+    value: ""
+    availability:
+      - RUNTIME

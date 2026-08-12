@@ -153,4 +153,30 @@ describe("GET /api/requests", () => {
     expect(data.requests).toHaveLength(1);
     expect(data.requests[0].id).toBe(openInLanus.id);
   });
+
+  it("hides exactAddress on own jobs until payment is confirmed, reveals it once it is", async () => {
+    const notPaid: ServiceRequestWithId = {
+      ...openInLanus,
+      id: "request-2",
+      status: "accepted",
+      professionalId: "actor-1",
+      payment: { method: "transfer", subtotalArs: 25000, feeArs: 2000, amountArs: 27000 },
+    };
+    const paid: ServiceRequestWithId = {
+      ...openInLanus,
+      id: "request-3",
+      status: "accepted",
+      professionalId: "actor-1",
+      payment: { method: "cash", subtotalArs: 25000, feeArs: 2000, amountArs: 27000 },
+    };
+    const handler = createRequestsGetHandler(
+      dependencies([], {}, [notPaid, paid]),
+    );
+    const response = await handler(requestWithRole("professional"));
+    const data = (await response.json()) as { requests: ServiceRequestWithId[] };
+
+    const byId = Object.fromEntries(data.requests.map((item) => [item.id, item]));
+    expect(byId["request-2"]?.location).not.toHaveProperty("exactAddress");
+    expect(byId["request-3"]?.location?.exactAddress).toBe("Calle Falsa 123");
+  });
 });

@@ -40,8 +40,11 @@ export function createSessionPostHandler(dependencies: Dependencies) {
     // pedido para esta sesión no coincide con el que trae el idToken
     // (porque nunca se asignó, o porque la sesión anterior era del otro
     // rol), hay que asignarlo y pedirle al cliente que refresque el token
-    // antes de armar la cookie de sesión.
-    if (requestedRole && decoded.role !== requestedRole) {
+    // antes de armar la cookie de sesión. Un admin es la excepción: su rol
+    // no se elige en el selector de /login (no hay botón para eso), así
+    // que un idToken viejo que todavía dice "customer"/"professional" de
+    // una sesión anterior no debe pisar el claim admin ya asignado.
+    if (requestedRole && decoded.role !== requestedRole && decoded.role !== "admin") {
       await dependencies.setActiveRole(decoded.uid, requestedRole);
       return Response.json({ needsRefresh: true });
     }

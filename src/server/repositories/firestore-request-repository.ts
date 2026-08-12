@@ -108,4 +108,52 @@ export class FirestoreRequestRepository implements RequestRepository {
   ) {
     await this.firestore.collection("requests").doc(id).update(input);
   }
+
+  async recordPayment(
+    id: string,
+    input: {
+      acceptedQuoteId: string;
+      paymentMethod: "cash" | "transfer";
+      subtotalArs: number;
+      feeArs: number;
+      amountArs: number;
+    },
+  ) {
+    await this.firestore
+      .collection("requests")
+      .doc(id)
+      .update({
+        acceptedQuoteId: input.acceptedQuoteId,
+        payment: {
+          method: input.paymentMethod,
+          subtotalArs: input.subtotalArs,
+          feeArs: input.feeArs,
+          amountArs: input.amountArs,
+        },
+        ...(input.paymentMethod === "transfer" ? { payoutStatus: "pending" as const } : {}),
+      });
+  }
+
+  async submitPaymentReceipt(id: string, receipt: { storagePath: string; mimeType: string }) {
+    await this.firestore.collection("requests").doc(id).update({
+      paymentReceipt: receipt,
+      paymentReceiptSubmittedAt: FieldValue.serverTimestamp(),
+    });
+  }
+
+  async listPendingPayouts() {
+    const readClient = this.firestore as unknown as FirestoreReadClient;
+    const snapshot = await readClient
+      .collection("requests")
+      .where("payoutStatus", "==", "pending")
+      .get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as ServiceRequest) }));
+  }
+
+  async settlePayout(id: string) {
+    await this.firestore.collection("requests").doc(id).update({
+      payoutStatus: "settled",
+      payoutSettledAt: FieldValue.serverTimestamp(),
+    });
+  }
 }

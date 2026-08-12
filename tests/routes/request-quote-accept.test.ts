@@ -40,9 +40,15 @@ function context() {
   return { params: Promise.resolve({ id: "request-1", quoteId: "quote-1" }) };
 }
 
-function call(handler: ReturnType<typeof createQuoteAcceptHandler>) {
+function call(
+  handler: ReturnType<typeof createQuoteAcceptHandler>,
+  body: unknown = { paymentMethod: "cash" },
+) {
   return handler(
-    new Request("http://localhost/api/requests/request-1/quotes/quote-1/accept", { method: "POST" }),
+    new Request("http://localhost/api/requests/request-1/quotes/quote-1/accept", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
     context(),
   );
 }
@@ -55,10 +61,12 @@ function dependencies(options?: {
   allQuotes?: QuoteWithId[];
 }) {
   const statusUpdates: Array<{ id: string; input: Record<string, unknown> }> = [];
+  const payments: Array<{ id: string; input: Record<string, unknown> }> = [];
   const quoteStatusUpdates: Array<{ id: string; status: string }> = [];
   const audits: Array<Record<string, unknown>> = [];
   return {
     statusUpdates,
+    payments,
     quoteStatusUpdates,
     audits,
     deps: {
@@ -70,6 +78,9 @@ function dependencies(options?: {
         get: async () => (options?.found === undefined ? openInLanus : options.found),
         updateStatus: async (id: string, input: Record<string, unknown>) => {
           statusUpdates.push({ id, input });
+        },
+        recordPayment: async (id: string, input: Record<string, unknown>) => {
+          payments.push({ id, input });
         },
       },
       quoteRepository: {
@@ -123,6 +134,12 @@ describe("POST /api/requests/:id/quotes/:quoteId/accept", () => {
     expect(response.status).toBe(409);
   });
 
+  it("returns 400 when the payment method is missing or invalid", async () => {
+    const { deps } = dependencies();
+    const response = await call(createQuoteAcceptHandler(deps), { paymentMethod: "bitcoin" });
+    expect(response.status).toBe(400);
+  });
+
   it("accepts the quote, rejects the other pending ones, assigns the professional and appends an audit event", async () => {
     const { deps, statusUpdates, quoteStatusUpdates, audits } = dependencies();
     const response = await call(createQuoteAcceptHandler(deps));
@@ -150,5 +167,38 @@ describe("POST /api/requests/:id/quotes/:quoteId/accept", () => {
     await call(createQuoteAcceptHandler(deps));
 
     expect(quoteStatusUpdates).toEqual([{ id: "quote-1", status: "accepted" }]);
+  });
+
+  it("records the 8% fee breakdown for a cash payment (laborArs 20000 + materialsArs 5000)", async () => {
+    const { deps, payments } = dependencies();
+    const response = await call(createQuoteAcceptHandler(deps), { paymentMethod: "cash" });
+    const body = await response.json();
+
+    expect(body).toMatchObject({
+      paymentMethod: "cash",
+      subtotalArs: 25000,
+      feeArs: 2000,
+      amountArs: 27000,
+    });
+    expect(payments).toEqual([
+      {
+        id: "request-1",
+        input: {
+          acceptedQuoteId: "quote-1",
+          paymentMethod: "cash",
+          subtotalArs: 25000,
+          feeArs: 2000,
+          amountArs: 27000,
+        },
+      },
+    ]);
+  });
+
+  it("records a transfer payment the same way, leaving payoutStatus to the repository", async () => {
+    const { deps, payments } = dependencies();
+    const response = await call(createQuoteAcceptHandler(deps), { paymentMethod: "transfer" });
+
+    expect(response.status).toBe(200);
+    expect(payments[0]?.input).toMatchObject({ paymentMethod: "transfer" });
   });
 });

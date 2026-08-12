@@ -101,7 +101,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 // como profesional). Esta guarda evita que la sesión activa vea u opere
 // las pantallas del otro modo navegando por URL directa. "admin" pasa
 // cualquier guarda.
-export function useRoleGuard(requiredRole: "customer" | "professional", redirectTo: string) {
+export function useRoleGuard(
+  requiredRole: "customer" | "professional" | "admin",
+  redirectTo: string,
+) {
   const { user, role, loading } = useAuth();
   const router = useRouter();
 

@@ -2,6 +2,7 @@ import type { Actor } from "@/src/server/auth";
 import type { RequestRepository } from "@/src/server/repositories/request-repository";
 import type { ProfileRepository } from "@/src/server/repositories/profile-repository";
 import { canProfessionalViewRequest } from "@/src/domain/quotes";
+import { isPaymentConfirmed } from "@/src/domain/requests";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -69,10 +70,13 @@ export function createRequestGetHandler(dependencies: Dependencies) {
         if (!canView) return Response.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      // El profesional nunca ve la dirección exacta acá: solo la zona
-      // aproximada (lat/lng/displayRadiusKm). La revelación condicional de
-      // exactAddress cuando el trabajo se acepta y se paga es un ítem
-      // aparte del roadmap (ver README) que todavía no está implementado.
+      // El profesional ve la dirección exacta únicamente en su propio
+      // trabajo asignado, y solo una vez que el pago está confirmado (ver
+      // isPaymentConfirmed): antes de eso, solo la zona aproximada
+      // (lat/lng/displayRadiusKm).
+      if (found.professionalId === actor.id && isPaymentConfirmed(found)) {
+        return Response.json(found);
+      }
       const location = { ...found.location };
       delete location.exactAddress;
       return Response.json({ ...found, location });

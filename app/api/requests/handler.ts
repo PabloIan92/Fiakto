@@ -7,6 +7,7 @@ import type {
 } from "@/src/server/repositories/request-repository";
 import type { ProfileRepository } from "@/src/server/repositories/profile-repository";
 import { canProfessionalViewRequest } from "@/src/domain/quotes";
+import { isPaymentConfirmed } from "@/src/domain/requests";
 
 type AuditEvent = Parameters<typeof appendAuditEvent>[0];
 
@@ -106,9 +107,14 @@ export function createRequestsGetHandler(dependencies: GetDependencies) {
           },
         ),
       );
-      const ownJobs = await dependencies.repository.listByProfessional(actor.id);
+      // A diferencia de "matching" (todavía sin aceptar, nunca se revela la
+      // dirección), un trabajo propio sí la muestra una vez que el pago
+      // está confirmado (ver isPaymentConfirmed).
+      const ownJobs = (await dependencies.repository.listByProfessional(actor.id)).map((item) =>
+        isPaymentConfirmed(item) ? item : withoutExactAddress(item),
+      );
       return Response.json({
-        requests: [...matching, ...ownJobs].map(withoutExactAddress),
+        requests: [...matching.map(withoutExactAddress), ...ownJobs],
       });
     }
 

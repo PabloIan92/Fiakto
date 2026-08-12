@@ -18,7 +18,7 @@ import { beginManagedLogin, endManagedLogin } from "@/src/client/pending-role";
 const ROLE_HOME: Record<"customer" | "professional" | "admin", string> = {
   customer: "/cliente/solicitudes",
   professional: "/profesional/oportunidades",
-  admin: "/cliente/solicitudes",
+  admin: "/admin/reportes",
 };
 
 export default function LoginPage() {

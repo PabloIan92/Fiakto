@@ -27,4 +27,23 @@ export interface RequestRepository {
     id: string,
     input: { status: ServiceRequest["status"]; professionalId?: string },
   ): Promise<void>;
+  // "cash" nunca toca una cuenta de Fiakto (el cliente le paga en mano al
+  // profesional), así que no genera payoutStatus; "transfer" sí, ver
+  // listPendingPayouts/settlePayout más abajo.
+  recordPayment(
+    id: string,
+    input: {
+      acceptedQuoteId: string;
+      paymentMethod: "cash" | "transfer";
+      subtotalArs: number;
+      feeArs: number;
+      amountArs: number;
+    },
+  ): Promise<void>;
+  submitPaymentReceipt(
+    id: string,
+    receipt: { storagePath: string; mimeType: string },
+  ): Promise<void>;
+  listPendingPayouts(): Promise<ServiceRequestWithId[]>;
+  settlePayout(id: string): Promise<void>;
 }

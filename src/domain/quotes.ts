@@ -48,3 +48,12 @@ export function canProfessionalViewRequest(
     professional.coverage.some((locality) => normalizeLocality(locality) === requestLocality)
   );
 }
+
+export const SERVICE_FEE_RATE = 0.08;
+
+export function computeQuoteBreakdown(quote: Pick<Quote, "laborArs" | "materialsArs">) {
+  const subtotalArs = quote.laborArs + quote.materialsArs;
+  const feeArs = Math.round(subtotalArs * SERVICE_FEE_RATE);
+  const totalArs = subtotalArs + feeArs;
+  return { subtotalArs, feeArs, totalArs };
+}

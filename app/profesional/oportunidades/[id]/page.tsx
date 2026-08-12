@@ -41,6 +41,7 @@ const OWN_QUOTE_MESSAGE: Record<OwnQuote["status"], string> = {
 
 const CAN_QUOTE_STATUSES: OpportunityDetail["status"][] = ["open", "quoted"];
 const ASSIGNED_STATUSES: OpportunityDetail["status"][] = ["accepted", "in_progress", "completed"];
+const REPORTABLE_STATUSES: OpportunityDetail["status"][] = ["accepted", "in_progress", "completed", "closed"];
 
 export default function OportunidadDetallePage() {
   const params = useParams<{ id: string }>();
@@ -60,6 +61,9 @@ export default function OportunidadDetallePage() {
   });
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [submittingQuote, setSubmittingQuote] = useState(false);
+
+  const [reportReason, setReportReason] = useState("");
+  const [reportStatus, setReportStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
 
   useEffect(() => {
     if (!ready || !user) return;
@@ -142,6 +146,19 @@ export default function OportunidadDetallePage() {
       return;
     }
     setReloadIndex((n) => n + 1);
+  }
+
+  async function handleReport(event: FormEvent) {
+    event.preventDefault();
+    if (!user) return;
+    setReportStatus("submitting");
+    const token = await user.getIdToken();
+    const response = await fetch(`/api/requests/${params.id}/report`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ reason: reportReason }),
+    });
+    setReportStatus(response.ok ? "done" : "error");
   }
 
   if (!ready || status === "loading") {
@@ -317,6 +334,43 @@ export default function OportunidadDetallePage() {
           </p>
         )}
       </div>
+
+      {!assignedToSomeoneElse && REPORTABLE_STATUSES.includes(opportunity.status) && (
+        <div className="mt-8 border-t border-[#181713]/15 pt-6">
+          <h2 className="mb-2 text-lg font-semibold">¿Algo salió mal?</h2>
+          {reportStatus === "done" ? (
+            <p className="text-sm font-semibold text-[#34745a]">
+              Reportado. Un admin de Fiakto lo va a revisar.
+            </p>
+          ) : (
+            <form onSubmit={handleReport} className="flex flex-col gap-2">
+              <textarea
+                aria-label="Contanos qué pasó"
+                required
+                minLength={10}
+                maxLength={500}
+                rows={3}
+                placeholder="Contanos qué pasó…"
+                value={reportReason}
+                onChange={(event) => setReportReason(event.target.value)}
+                className="w-full resize-y border border-[#181713]/30 bg-transparent px-3 py-2 text-sm outline-none focus:border-[#dc4b2f]"
+              />
+              <button
+                type="submit"
+                disabled={reportStatus === "submitting"}
+                className="w-fit border border-[#181713]/30 px-4 py-2 text-sm font-bold transition hover:border-[#181713]/60 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {reportStatus === "submitting" ? "Enviando…" : "Reportar un problema"}
+              </button>
+              {reportStatus === "error" && (
+                <p role="alert" className="text-xs font-bold text-[#b52f1c]">
+                  No pudimos enviar el reporte. Probá de nuevo.
+                </p>
+              )}
+            </form>
+          )}
+        </div>
+      )}
     </main>
     </>
   );
