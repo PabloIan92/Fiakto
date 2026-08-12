@@ -12,7 +12,7 @@ import {
 } from "firebase/auth";
 
 import { auth } from "@/src/client/firebase-client";
-import { syncSession } from "@/src/client/session-sync";
+import { syncSessionUntilReady } from "@/src/client/session-sync";
 import { beginManagedLogin, endManagedLogin } from "@/src/client/pending-role";
 
 const ROLE_HOME: Record<"customer" | "professional" | "admin", string> = {
@@ -33,13 +33,12 @@ export default function LoginPage() {
   // Comun a email/password y Google: una vez que Firebase confirma el login,
   // sincroniza el rol elegido para esta sesion y redirige segun corresponda.
   async function syncSessionAndRedirect(user: User, requestedRole: "customer" | "professional") {
-    let token = await user.getIdToken();
-    const { needsRefresh } = await syncSession(token, fetch, requestedRole);
-    if (needsRefresh) {
-      token = await user.getIdToken(true);
-      await syncSession(token);
-    }
+    const ready = await syncSessionUntilReady(user, requestedRole);
     endManagedLogin();
+    if (!ready) {
+      setError("No pudimos confirmar tu sesión. Volvé a intentar en unos segundos.");
+      return;
+    }
 
     const tokenResult = await user.getIdTokenResult(true);
     const role = tokenResult.claims.role;
