@@ -97,9 +97,10 @@ export default function NewRequestPage() {
       setFileError("Ingresá tu localidad.");
       return;
     }
+    if (!user) return;
     setStatus("sending");
     const form = new FormData(event.currentTarget);
-    const token = await user!.getIdToken();
+    const token = await user.getIdToken();
     const authHeaders = { authorization: `Bearer ${token}` } as const;
 
     // Los archivos se suben directo a Storage via signed URLs de escritura
