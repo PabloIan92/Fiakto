@@ -28,11 +28,36 @@ env:
       - BUILD
       - RUNTIME
 
-  # Alias de la cuenta de Fiakto para "Aceptar y transferir a Fiakto" — no
-  # es secreto (se muestra al cliente en pantalla), se embebe en el bundle
-  # igual que la config de Firebase de arriba.
+  # Datos de la cuenta de Fiakto para "Aceptar y transferir a Fiakto" — no
+  # son secretos (existen para que el cliente pueda transferir, se
+  # muestran en pantalla igual que un alias/CBU en cualquier factura), se
+  # embeben en el bundle igual que la config de Firebase de arriba.
   - variable: NEXT_PUBLIC_FIAKTO_PAYMENT_ALIAS
     value: "fiakto"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIAKTO_PAYMENT_CBU
+    value: "3840200500000008745277"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIAKTO_PAYMENT_HOLDER
+    value: "Pablo Ian Laurino"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIAKTO_PAYMENT_CUIT
+    value: "20360105114"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIAKTO_PAYMENT_BANK
+    value: "Wilobank (vía Lemon)"
     availability:
       - BUILD
       - RUNTIME

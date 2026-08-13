@@ -24,9 +24,17 @@ function context() {
   return { params: Promise.resolve({ id: "request-1" }) };
 }
 
-function call(handler: ReturnType<typeof createRequestCompleteHandler>) {
+const completionPhoto = { storagePath: "requests/pro-1/done.jpg", mimeType: "image/jpeg" };
+
+function call(
+  handler: ReturnType<typeof createRequestCompleteHandler>,
+  body: unknown = completionPhoto,
+) {
   return handler(
-    new Request("http://localhost/api/requests/request-1/complete", { method: "POST" }),
+    new Request("http://localhost/api/requests/request-1/complete", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
     context(),
   );
 }
@@ -66,7 +74,13 @@ describe("POST /api/requests/:id/complete", () => {
     expect(response.status).toBe(409);
   });
 
-  it("completes the job and appends an audit event", async () => {
+  it("returns 400 when there is no completion photo in the body", async () => {
+    const { deps } = dependencies();
+    const response = await call(createRequestCompleteHandler(deps), {});
+    expect(response.status).toBe(400);
+  });
+
+  it("completes the job with the completion photo and appends an audit event", async () => {
     const { deps, completed, audits } = dependencies();
     const response = await call(createRequestCompleteHandler(deps));
 
@@ -75,7 +89,7 @@ describe("POST /api/requests/:id/complete", () => {
     expect(body).toMatchObject({ status: "completed", workCompletedAt: "2026-08-09T18:00:00.000Z" });
     expect(completed[0]).toMatchObject({
       id: "request-1",
-      input: { workCompletedAt: "2026-08-09T18:00:00.000Z" },
+      input: { workCompletedAt: "2026-08-09T18:00:00.000Z", completionMedia: completionPhoto },
     });
     expect(audits[0]).toMatchObject({ action: "request.work_completed", entityId: "request-1" });
   });

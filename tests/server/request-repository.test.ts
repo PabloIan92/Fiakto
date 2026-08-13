@@ -54,10 +54,27 @@ class FakeRequestRepository implements RequestRepository {
     this.requests.set(id, { ...stored, request: { ...stored.request, status: "in_progress", ...input } });
   }
 
-  async completeWork(id: string, input: { workCompletedAt: string }) {
+  async completeWork(
+    id: string,
+    input: { workCompletedAt: string; completionMedia: { storagePath: string; mimeType: string } },
+  ) {
     const stored = this.requests.get(id);
     if (!stored) throw new Error("Request not found");
-    this.requests.set(id, { ...stored, request: { ...stored.request, status: "completed", ...input } });
+    this.requests.set(id, {
+      ...stored,
+      request: {
+        ...stored.request,
+        status: "completed",
+        workCompletedAt: input.workCompletedAt,
+        completionMedia: input.completionMedia as ServiceRequest["completionMedia"],
+      },
+    });
+  }
+
+  async closeRequest(id: string) {
+    const stored = this.requests.get(id);
+    if (!stored) throw new Error("Request not found");
+    this.requests.set(id, { ...stored, request: { ...stored.request, status: "closed" } });
   }
 
   async updateStatus(id: string, input: { status: ServiceRequest["status"]; professionalId?: string }) {
@@ -255,16 +272,36 @@ describe("FirestoreRequestRepository", () => {
     });
   });
 
-  it("marks the request completed", async () => {
+  it("marks the request completed with the professional's completion photo", async () => {
     const firestore = new FakeFirestore();
     const repository = new FirestoreRequestRepository(firestore);
-    await repository.completeWork("request-7", { workCompletedAt: "2026-08-10T09:00:00.000Z" });
+    await repository.completeWork("request-7", {
+      workCompletedAt: "2026-08-10T09:00:00.000Z",
+      completionMedia: { storagePath: "requests/pro-1/done.jpg", mimeType: "image/jpeg" },
+    });
 
     expect(firestore.updated[0]).toMatchObject({
       collection: "requests",
       id: "request-7",
-      data: { status: "completed", workCompletedAt: "2026-08-10T09:00:00.000Z" },
+      data: {
+        status: "completed",
+        workCompletedAt: "2026-08-10T09:00:00.000Z",
+        completionMedia: { storagePath: "requests/pro-1/done.jpg", mimeType: "image/jpeg" },
+      },
     });
+  });
+
+  it("closes the request once the customer approves the completion photo", async () => {
+    const firestore = new FakeFirestore();
+    const repository = new FirestoreRequestRepository(firestore);
+    await repository.closeRequest("request-7");
+
+    expect(firestore.updated[0]).toMatchObject({
+      collection: "requests",
+      id: "request-7",
+      data: { status: "closed" },
+    });
+    expect(firestore.updated[0]?.data.closedAt).toBeDefined();
   });
 
   it("returns null from get() when the request doesn't exist", async () => {

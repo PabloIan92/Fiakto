@@ -16,6 +16,10 @@ const ApproximateMap = dynamic(
 );
 
 const FIAKTO_PAYMENT_ALIAS = process.env.NEXT_PUBLIC_FIAKTO_PAYMENT_ALIAS ?? "";
+const FIAKTO_PAYMENT_CBU = process.env.NEXT_PUBLIC_FIAKTO_PAYMENT_CBU ?? "";
+const FIAKTO_PAYMENT_CUIT = process.env.NEXT_PUBLIC_FIAKTO_PAYMENT_CUIT ?? "";
+const FIAKTO_PAYMENT_HOLDER = process.env.NEXT_PUBLIC_FIAKTO_PAYMENT_HOLDER ?? "";
+const FIAKTO_PAYMENT_BANK = process.env.NEXT_PUBLIC_FIAKTO_PAYMENT_BANK ?? "";
 
 type RequestDetail = {
   id: string;
@@ -35,6 +39,7 @@ type RequestDetail = {
   payment?: { method: "cash" | "transfer"; subtotalArs: number; feeArs: number; amountArs: number };
   payoutStatus?: "pending" | "settled";
   paymentReceipt?: { storagePath: string; mimeType: string };
+  completionMediaUrl?: string;
 };
 
 type Quote = {
@@ -91,6 +96,8 @@ export default function SolicitudDetallePage() {
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportStatus, setReportStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
+  const [closing, setClosing] = useState(false);
+  const [closeError, setCloseError] = useState("");
   const [reloadIndex, setReloadIndex] = useState(0);
 
   useEffect(() => {
@@ -198,6 +205,23 @@ export default function SolicitudDetallePage() {
     setReportStatus(response.ok ? "done" : "error");
   }
 
+  async function handleClose() {
+    if (!user) return;
+    setClosing(true);
+    setCloseError("");
+    const token = await user.getIdToken();
+    const response = await fetch(`/api/requests/${params.id}/close`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    setClosing(false);
+    if (!response.ok) {
+      setCloseError("No pudimos cerrar la solicitud. Probá de nuevo.");
+      return;
+    }
+    setReloadIndex((n) => n + 1);
+  }
+
   if (!ready || status === "loading") {
     return (
       <>
@@ -271,10 +295,40 @@ export default function SolicitudDetallePage() {
 
           {needsReceipt && (
             <div className="mt-4 border border-dashed border-[#181713]/35 bg-[#f3efe6]/60 p-4">
-              <p className="mb-2 text-sm font-bold">
-                Transferí ${request.payment.amountArs.toLocaleString("es-AR")} al alias{" "}
-                <span className="font-mono">{FIAKTO_PAYMENT_ALIAS}</span> y subí el comprobante.
+              <p className="mb-3 text-sm font-bold">
+                Transferí ${request.payment.amountArs.toLocaleString("es-AR")} a la cuenta de Fiakto y
+                subí el comprobante:
               </p>
+              <dl className="mb-3 grid gap-1 text-sm">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-[#777166]">Alias</dt>
+                  <dd className="font-mono font-bold">{FIAKTO_PAYMENT_ALIAS}</dd>
+                </div>
+                {FIAKTO_PAYMENT_CBU && (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-[#777166]">CBU</dt>
+                    <dd className="font-mono font-bold">{FIAKTO_PAYMENT_CBU}</dd>
+                  </div>
+                )}
+                {FIAKTO_PAYMENT_HOLDER && (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-[#777166]">Titular</dt>
+                    <dd className="font-bold">{FIAKTO_PAYMENT_HOLDER}</dd>
+                  </div>
+                )}
+                {FIAKTO_PAYMENT_CUIT && (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-[#777166]">CUIT</dt>
+                    <dd className="font-mono font-bold">{FIAKTO_PAYMENT_CUIT}</dd>
+                  </div>
+                )}
+                {FIAKTO_PAYMENT_BANK && (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-[#777166]">Banco</dt>
+                    <dd className="font-bold">{FIAKTO_PAYMENT_BANK}</dd>
+                  </div>
+                )}
+              </dl>
               <input
                 aria-label="Comprobante de transferencia"
                 type="file"
@@ -294,6 +348,40 @@ export default function SolicitudDetallePage() {
           {request.payment.method === "transfer" && request.paymentReceipt && (
             <p className="mt-3 text-sm font-semibold text-[#34745a]">Comprobante recibido.</p>
           )}
+        </div>
+      )}
+
+      {request.status === "completed" && (
+        <div className="mt-8 border-t border-[#181713]/15 pt-6">
+          <h2 className="mb-2 text-lg font-semibold">El profesional marcó el trabajo como terminado</h2>
+          <p className="mb-3 text-sm text-[#777166]">Revisá la foto y aprobá para cerrar la solicitud.</p>
+          {request.completionMediaUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- URL firmada temporal, no vale la pena el pipeline de next/image para esto.
+            <img
+              src={request.completionMediaUrl}
+              alt="Foto del trabajo terminado"
+              className="mb-3 max-h-80 w-full rounded-lg border border-[#181713]/10 object-contain"
+            />
+          )}
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={closing}
+            className="w-full bg-[#dc4b2f] px-6 py-4 text-base font-black text-white transition hover:bg-[#bd351f] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {closing ? "Cerrando…" : "Aprobar y cerrar"}
+          </button>
+          {closeError && (
+            <p role="alert" className="mt-2 text-xs font-bold text-[#b52f1c]">
+              {closeError}
+            </p>
+          )}
+        </div>
+      )}
+
+      {request.status === "closed" && (
+        <div className="mt-8 border-t border-[#181713]/15 pt-6">
+          <p className="text-sm font-bold text-[#34745a]">Trabajo aprobado. Solicitud cerrada.</p>
         </div>
       )}
 

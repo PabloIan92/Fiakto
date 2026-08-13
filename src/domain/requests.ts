@@ -73,6 +73,11 @@ export const ServiceRequestSchema = z.object({
   payment: PaymentSchema.optional(),
   payoutStatus: z.enum(["pending", "settled"]).optional(),
   paymentReceipt: PaymentReceiptSchema.optional(),
+  // Foto del trabajo terminado que sube el profesional al completar (no el
+  // cliente: él no hizo el trabajo, así que no puede ser quien certifica
+  // que quedó bien). El cliente la revisa y aprueba con
+  // POST /api/requests/[id]/close para recién ahí pasar a "closed".
+  completionMedia: MediaSchema.optional(),
 });
 
 export type ServiceRequest = z.infer<typeof ServiceRequestSchema>;

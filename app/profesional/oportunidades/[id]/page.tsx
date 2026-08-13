@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 
@@ -27,6 +27,9 @@ type OpportunityDetail = {
   workStartedAt?: string;
   workCompletedAt?: string;
 };
+
+const COMPLETION_PHOTO_TYPES = ["image/jpeg", "image/png"];
+const MAX_COMPLETION_PHOTO_BYTES = 20 * 1024 * 1024;
 
 type OwnQuote = {
   id: string;
@@ -64,6 +67,9 @@ export default function OportunidadDetallePage() {
 
   const [reportReason, setReportReason] = useState("");
   const [reportStatus, setReportStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
+
+  const [completionFile, setCompletionFile] = useState<File | null>(null);
+  const [completionError, setCompletionError] = useState("");
 
   useEffect(() => {
     if (!ready || !user) return;
@@ -110,15 +116,69 @@ export default function OportunidadDetallePage() {
     setReloadIndex((n) => n + 1);
   }
 
+  function handleCompletionFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!COMPLETION_PHOTO_TYPES.includes(file.type)) {
+      setCompletionError("Usá JPG o PNG.");
+      setCompletionFile(null);
+      return;
+    }
+    if (file.size > MAX_COMPLETION_PHOTO_BYTES) {
+      setCompletionError("La foto no puede superar los 20 MB.");
+      setCompletionFile(null);
+      return;
+    }
+    setCompletionError("");
+    setCompletionFile(file);
+  }
+
   async function handleComplete() {
-    if (!user) return;
+    if (!user || !completionFile) return;
     setActionPending(true);
+    setCompletionError("");
     const token = await user.getIdToken();
-    await fetch(`/api/requests/${params.id}/complete`, {
+    const authHeaders = { authorization: `Bearer ${token}` };
+
+    // Mismo endpoint de signed URLs que usa el cliente al crear una
+    // solicitud (POST /api/requests/media ya acepta customer o
+    // professional): el profesional sube la foto directo a Storage antes
+    // de marcar el trabajo como completado.
+    const uploadUrlsResponse = await fetch("/api/requests/media", {
       method: "POST",
-      headers: { authorization: `Bearer ${token}` },
+      headers: { "content-type": "application/json", ...authHeaders },
+      body: JSON.stringify({ files: [{ mimeType: completionFile.type }] }),
+    });
+    if (!uploadUrlsResponse.ok) {
+      setActionPending(false);
+      setCompletionError("No pudimos preparar la subida de la foto. Probá de nuevo.");
+      return;
+    }
+    const { media } = (await uploadUrlsResponse.json()) as {
+      media: Array<{ storagePath: string; uploadUrl: string; mimeType: string }>;
+    };
+    const slot = media[0];
+    const uploadResponse = await fetch(slot.uploadUrl, {
+      method: "PUT",
+      headers: { "content-type": completionFile.type },
+      body: completionFile,
+    });
+    if (!uploadResponse.ok) {
+      setActionPending(false);
+      setCompletionError("No pudimos subir la foto. Revisá tu conexión e intentá de nuevo.");
+      return;
+    }
+
+    const response = await fetch(`/api/requests/${params.id}/complete`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...authHeaders },
+      body: JSON.stringify({ storagePath: slot.storagePath, mimeType: slot.mimeType }),
     });
     setActionPending(false);
+    if (!response.ok) {
+      setCompletionError("No pudimos marcar el trabajo como completado. Probá de nuevo.");
+      return;
+    }
     setReloadIndex((n) => n + 1);
   }
 
@@ -314,10 +374,28 @@ export default function OportunidadDetallePage() {
         {opportunity.status === "in_progress" && opportunity.slaDeadline && (
           <>
             <SlaBanner slaDeadline={opportunity.slaDeadline} />
+            <div className="mt-4 border border-dashed border-[#181713]/35 bg-[#f3efe6]/60 p-4">
+              <p className="mb-2 text-sm font-bold">
+                Subí una foto del trabajo terminado para poder marcarlo como completado.
+              </p>
+              <input
+                aria-label="Foto del trabajo terminado"
+                type="file"
+                accept={COMPLETION_PHOTO_TYPES.join(",")}
+                onChange={handleCompletionFile}
+                disabled={actionPending}
+                className="block w-full text-sm file:mr-4 file:border-0 file:bg-[#181713] file:px-4 file:py-2 file:font-bold file:text-white"
+              />
+              {completionError && (
+                <p role="alert" className="mt-2 text-xs font-bold text-[#b52f1c]">
+                  {completionError}
+                </p>
+              )}
+            </div>
             <button
               type="button"
               onClick={handleComplete}
-              disabled={actionPending}
+              disabled={actionPending || !completionFile}
               className="mt-4 w-full bg-[#181713] px-6 py-4 text-base font-black text-white transition hover:bg-[#181713]/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {actionPending ? "Guardando…" : "Marcar como completado"}
@@ -330,8 +408,12 @@ export default function OportunidadDetallePage() {
             Trabajo completado
             {opportunity.workCompletedAt &&
               ` el ${new Date(opportunity.workCompletedAt).toLocaleString("es-AR")}`}
-            .
+            . Esperando que el cliente lo revise y lo apruebe.
           </p>
+        )}
+
+        {opportunity.status === "closed" && !assignedToSomeoneElse && (
+          <p className="text-sm font-bold text-[#34745a]">El cliente aprobó el trabajo. Cerrado.</p>
         )}
       </div>
 

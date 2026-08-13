@@ -48,6 +48,7 @@ describe("GET /api/requests/[id]", () => {
         upsert: async () => undefined,
         setPhotoPath: async () => undefined,
       },
+      signMedia: async () => [],
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
@@ -76,6 +77,7 @@ describe("GET /api/requests/[id]", () => {
         upsert: async () => undefined,
         setPhotoPath: async () => undefined,
       },
+      signMedia: async () => [],
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
@@ -99,6 +101,7 @@ describe("GET /api/requests/[id]", () => {
         upsert: async () => undefined,
         setPhotoPath: async () => undefined,
       },
+      signMedia: async () => [],
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
@@ -126,6 +129,7 @@ describe("GET /api/requests/[id]", () => {
         upsert: async () => undefined,
         setPhotoPath: async () => undefined,
       },
+      signMedia: async () => [],
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
@@ -144,12 +148,37 @@ describe("GET /api/requests/[id]", () => {
         get: async () => null,
       },
       profileRepository: { get: async () => null, upsert: async () => undefined, setPhotoPath: async () => undefined },
+      signMedia: async () => [],
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.location.exactAddress).toBe("Calle Falsa 123");
+  });
+
+  it("signs the completion photo for the owning customer to review before closing", async () => {
+    const completed = {
+      ...openInLanus,
+      status: "completed" as const,
+      professionalId: "pro-1",
+      completionMedia: { storagePath: "requests/pro-1/done.jpg", mimeType: "image/jpeg" as const },
+    };
+    const handler = createRequestGetHandler({
+      authenticate: async () => ({ id: "customer-1", role: "customer" }),
+      repository: {
+        listByCustomer: async () => [completed],
+        listOpen: async () => [],
+        listByProfessional: async () => [],
+        get: async () => null,
+      },
+      profileRepository: { get: async () => null, upsert: async () => undefined, setPhotoPath: async () => undefined },
+      signMedia: async (paths: string[]) => paths.map((path) => `https://signed.example/${path}`),
+    });
+
+    const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
+    const body = await response.json();
+    expect(body.completionMediaUrl).toBe("https://signed.example/requests/pro-1/done.jpg");
   });
 
   it("returns 403 instead of crashing for a legacy request with no location", async () => {
@@ -168,6 +197,7 @@ describe("GET /api/requests/[id]", () => {
         upsert: async () => undefined,
         setPhotoPath: async () => undefined,
       },
+      signMedia: async () => [],
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
@@ -184,6 +214,7 @@ describe("GET /api/requests/[id]", () => {
         get: async () => null,
       },
       profileRepository: { get: async () => null, upsert: async () => undefined, setPhotoPath: async () => undefined },
+      signMedia: async () => [],
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
@@ -219,6 +250,7 @@ describe("GET /api/requests/[id]", () => {
         upsert: async () => undefined,
         setPhotoPath: async () => undefined,
       },
+      signMedia: async () => [],
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
@@ -243,6 +275,7 @@ describe("GET /api/requests/[id]", () => {
         get: async () => null,
       },
       profileRepository: { get: async () => null, upsert: async () => undefined, setPhotoPath: async () => undefined },
+      signMedia: async () => [],
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
@@ -267,6 +300,7 @@ describe("GET /api/requests/[id]", () => {
         get: async () => null,
       },
       profileRepository: { get: async () => null, upsert: async () => undefined, setPhotoPath: async () => undefined },
+      signMedia: async () => [],
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
@@ -290,6 +324,7 @@ describe("GET /api/requests/[id]", () => {
         get: async () => null,
       },
       profileRepository: { get: async () => null, upsert: async () => undefined, setPhotoPath: async () => undefined },
+      signMedia: async () => [],
     });
 
     const response = await handler(new Request("http://localhost/api/requests/request-1"), context());

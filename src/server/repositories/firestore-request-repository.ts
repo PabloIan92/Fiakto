@@ -95,10 +95,24 @@ export class FirestoreRequestRepository implements RequestRepository {
     });
   }
 
-  async completeWork(id: string, input: { workCompletedAt: string }) {
+  async completeWork(
+    id: string,
+    input: {
+      workCompletedAt: string;
+      completionMedia: { storagePath: string; mimeType: string };
+    },
+  ) {
     await this.firestore.collection("requests").doc(id).update({
       status: "completed",
       workCompletedAt: input.workCompletedAt,
+      completionMedia: input.completionMedia,
+    });
+  }
+
+  async closeRequest(id: string) {
+    await this.firestore.collection("requests").doc(id).update({
+      status: "closed",
+      closedAt: FieldValue.serverTimestamp(),
     });
   }
 

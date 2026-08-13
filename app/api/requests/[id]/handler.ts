@@ -14,6 +14,7 @@ export type Dependencies = {
   authenticate(request: Request): Promise<Actor | null>;
   repository: Pick<RequestRepository, "listByCustomer" | "listOpen" | "listByProfessional" | "get">;
   profileRepository: ProfileRepository;
+  signMedia(paths: string[]): Promise<string[]>;
 };
 
 export function createRequestGetHandler(dependencies: Dependencies) {
@@ -28,7 +29,11 @@ export function createRequestGetHandler(dependencies: Dependencies) {
       const own = await dependencies.repository.listByCustomer(actor.id);
       const found = own.find((item) => item.id === id);
       if (!found) return Response.json({ error: "Not found" }, { status: 404 });
-      return Response.json(found);
+      if (!found.completionMedia) return Response.json(found);
+      const [completionMediaUrl] = await dependencies.signMedia([
+        found.completionMedia.storagePath,
+      ]);
+      return Response.json({ ...found, completionMediaUrl });
     }
 
     if (actor.role === "professional") {
