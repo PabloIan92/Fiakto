@@ -36,6 +36,8 @@ const STATUS_LABELS: Record<RequestItem["status"], string> = {
   closed: "Cerrada",
 };
 
+const EDITABLE_STATUSES: RequestItem["status"][] = ["draft", "triaging", "open", "quoted"];
+
 const STATUS_COLORS: Record<RequestItem["status"], string> = {
   draft: "bg-neutral-200 text-neutral-700",
   triaging: "bg-amber-100 text-amber-800",
@@ -152,6 +154,14 @@ export default function MisSolicitudesPage() {
                 )}
                 <span className="text-sm font-medium underline">Ver detalle y presupuestos</span>
               </a>
+              {EDITABLE_STATUSES.includes(item.status) && (
+                <Link
+                  href={`/cliente/solicitudes/${item.id}/editar`}
+                  className="w-fit text-xs font-bold underline"
+                >
+                  Editar
+                </Link>
+              )}
               {item.status === "draft" && (
                 <div className="mt-1 flex items-center gap-3">
                   <span className="text-xs text-[#777166]">

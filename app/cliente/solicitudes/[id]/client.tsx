@@ -46,6 +46,8 @@ type Quote = {
   status: "pending" | "accepted" | "rejected";
 };
 
+const EDITABLE_STATUSES: RequestDetail["status"][] = ["draft", "triaging", "open", "quoted"];
+
 const STATUS_LABELS: Record<RequestDetail["status"], string> = {
   draft: "Borrador",
   triaging: "En análisis",
@@ -215,10 +217,17 @@ export default function SolicitudDetallePage() {
           {STATUS_LABELS[request.status]}
         </span>
       </div>
-      <p className="mb-4 text-sm text-[#777166]">
-        {request.location
-          ? `${request.location.locality}, ${request.location.province}`
-          : "Ubicación no disponible"}
+      <p className="mb-4 flex items-center justify-between gap-3 text-sm text-[#777166]">
+        <span>
+          {request.location
+            ? `${request.location.locality}, ${request.location.province}`
+            : "Ubicación no disponible"}
+        </span>
+        {EDITABLE_STATUSES.includes(request.status) && (
+          <Link href={`/cliente/solicitudes/${request.id}/editar`} className="font-bold underline">
+            Editar
+          </Link>
+        )}
       </p>
       <p className="mb-6">{request.description}</p>
 

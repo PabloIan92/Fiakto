@@ -1,9 +1,13 @@
+import { z } from "zod";
+
 import type { Actor } from "@/src/server/auth";
+import { appendAuditEvent } from "@/src/server/audit";
 import type { RequestRepository } from "@/src/server/repositories/request-repository";
 import type { ProfileRepository } from "@/src/server/repositories/profile-repository";
 import { canProfessionalViewRequest } from "@/src/domain/quotes";
-import { isPaymentConfirmed } from "@/src/domain/requests";
+import { LocationSchema, isEditableStatus, isPaymentConfirmed } from "@/src/domain/requests";
 
+type AuditEvent = Parameters<typeof appendAuditEvent>[0];
 type Context = { params: Promise<{ id: string }> };
 
 export type Dependencies = {
@@ -84,5 +88,70 @@ export function createRequestGetHandler(dependencies: Dependencies) {
     }
 
     return Response.json({ error: "Forbidden" }, { status: 403 });
+  };
+}
+
+const EditRequestBodySchema = z.object({
+  description: z.string().trim().min(20).max(2000),
+  location: LocationSchema,
+});
+
+export type PutDependencies = {
+  authenticate(request: Request): Promise<Actor | null>;
+  repository: Pick<RequestRepository, "get" | "updateDetails">;
+  appendAudit(event: AuditEvent): Promise<unknown>;
+};
+
+export function createRequestPutHandler(dependencies: PutDependencies) {
+  return async function PUT(request: Request, context: Context) {
+    const actor = await dependencies.authenticate(request);
+    if (!actor || actor.role !== "customer") {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await context.params;
+    const found = await dependencies.repository.get(id);
+    if (!found || found.customerId !== actor.id) {
+      return Response.json({ error: "Not found" }, { status: 404 });
+    }
+    if (!isEditableStatus(found.status)) {
+      return Response.json(
+        { error: "This request can no longer be edited" },
+        { status: 400 },
+      );
+    }
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    }
+
+    const parsed = EditRequestBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json(
+        { error: "Invalid request", issues: parsed.error.issues },
+        { status: 400 },
+      );
+    }
+
+    const resetTriage = parsed.data.description !== found.description;
+    await dependencies.repository.updateDetails(id, {
+      description: parsed.data.description,
+      location: parsed.data.location,
+      resetTriage,
+    });
+
+    await dependencies.appendAudit({
+      actorId: actor.id,
+      actorRole: "customer",
+      action: "request.edited",
+      entityType: "request",
+      entityId: id,
+      metadata: { resetTriage },
+    });
+
+    return Response.json({ status: "ok", resetTriage });
   };
 }

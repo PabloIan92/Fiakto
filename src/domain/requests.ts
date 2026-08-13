@@ -91,6 +91,21 @@ export function isPaymentConfirmed(
   return request.payment.method === "cash" || Boolean(request.paymentReceipt);
 }
 
+// Una vez aceptado un presupuesto el profesional ya se comprometió en base
+// a la descripción/ubicación originales — permitir editarlas después
+// invalidaría ese acuerdo. Antes de aceptar, no hay compromiso de nadie
+// todavía, así que el cliente puede corregir lo que hizo falta.
+export const EDITABLE_STATUSES: ServiceRequest["status"][] = [
+  "draft",
+  "triaging",
+  "open",
+  "quoted",
+];
+
+export function isEditableStatus(status: ServiceRequest["status"]): boolean {
+  return EDITABLE_STATUSES.includes(status);
+}
+
 // Ventana de reparación por nivel de riesgo del triage: cuanto más urgente,
 // menos tiempo tiene el profesional para completar el trabajo una vez
 // iniciado.

@@ -1,6 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 
-import type { ServiceRequest } from "@/src/domain/requests";
+import type { Location, ServiceRequest } from "@/src/domain/requests";
 import type { TriageResult } from "@/src/domain/triage";
 import { db } from "@/src/server/firebase-admin";
 import type { RequestRepository } from "@/src/server/repositories/request-repository";
@@ -155,5 +155,22 @@ export class FirestoreRequestRepository implements RequestRepository {
       payoutStatus: "settled",
       payoutSettledAt: FieldValue.serverTimestamp(),
     });
+  }
+
+  async updateDetails(
+    id: string,
+    input: { description: string; location: Location; resetTriage: boolean },
+  ) {
+    await this.firestore
+      .collection("requests")
+      .doc(id)
+      .update({
+        description: input.description,
+        location: input.location,
+        editedAt: FieldValue.serverTimestamp(),
+        ...(input.resetTriage
+          ? { status: "triaging" as const, triage: FieldValue.delete() }
+          : {}),
+      });
   }
 }

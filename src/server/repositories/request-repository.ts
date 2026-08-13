@@ -1,4 +1,4 @@
-import type { ServiceRequest } from "@/src/domain/requests";
+import type { Location, ServiceRequest } from "@/src/domain/requests";
 import type { TriageResult } from "@/src/domain/triage";
 
 export type ServiceRequestWithId = ServiceRequest & { id: string };
@@ -46,4 +46,14 @@ export interface RequestRepository {
   ): Promise<void>;
   listPendingPayouts(): Promise<ServiceRequestWithId[]>;
   settlePayout(id: string): Promise<void>;
+  // Editar una solicitud ya publicada (solo permitido en estados
+  // "editables", ver isEditableStatus en src/domain/requests.ts). Si la
+  // descripción cambió, el triage anterior ya no es confiable — se borra y
+  // vuelve a "triaging" para forzar un nuevo análisis (el cliente dispara
+  // POST .../triage inmediatamente después, mismo patrón que crear una
+  // solicitud nueva).
+  updateDetails(
+    id: string,
+    input: { description: string; location: Location; resetTriage: boolean },
+  ): Promise<void>;
 }

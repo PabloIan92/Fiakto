@@ -114,6 +114,23 @@ class FakeRequestRepository implements RequestRepository {
     if (!stored) throw new Error("Request not found");
     this.requests.set(id, { ...stored, request: { ...stored.request, payoutStatus: "settled" } });
   }
+
+  async updateDetails(
+    id: string,
+    input: { description: string; location: ServiceRequest["location"]; resetTriage: boolean },
+  ) {
+    const stored = this.requests.get(id);
+    if (!stored) throw new Error("Request not found");
+    this.requests.set(id, {
+      ...stored,
+      request: {
+        ...stored.request,
+        description: input.description,
+        location: input.location,
+        ...(input.resetTriage ? { status: "triaging" as const, triage: undefined } : {}),
+      },
+    });
+  }
 }
 
 const baseRequest: ServiceRequest = {
@@ -346,6 +363,43 @@ describe("FirestoreRequestRepository", () => {
     expect(firestore.updated[0]?.data).toMatchObject({
       paymentReceipt: { storagePath: "payment-receipts/request-7.jpg", mimeType: "image/jpeg" },
     });
+  });
+
+  it("updates description and location without touching status/triage when the description didn't change", async () => {
+    const firestore = new FakeFirestore();
+    const repository = new FirestoreRequestRepository(firestore);
+    const newLocation = {
+      lat: -32.9,
+      lng: -60.6,
+      displayRadiusKm: 3,
+      province: "Santa Fe",
+      locality: "Rosario",
+    };
+    await repository.updateDetails("request-7", {
+      description: baseRequest.description,
+      location: newLocation,
+      resetTriage: false,
+    });
+
+    expect(firestore.updated[0]?.data).toMatchObject({
+      description: baseRequest.description,
+      location: newLocation,
+    });
+    expect(firestore.updated[0]?.data).not.toHaveProperty("status");
+    expect(firestore.updated[0]?.data).not.toHaveProperty("triage");
+  });
+
+  it("resets status to triaging and clears the old triage when the description changed", async () => {
+    const firestore = new FakeFirestore();
+    const repository = new FirestoreRequestRepository(firestore);
+    await repository.updateDetails("request-7", {
+      description: "Una descripción distinta de al menos veinte caracteres.",
+      location: baseRequest.location,
+      resetTriage: true,
+    });
+
+    expect(firestore.updated[0]?.data).toMatchObject({ status: "triaging" });
+    expect(firestore.updated[0]?.data.triage).toBeDefined();
   });
 });
 
