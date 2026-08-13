@@ -65,7 +65,14 @@ describe("GET /api/requests/[id]", () => {
       },
       profileRepository: {
         get: async () =>
-          ({ userId: "pro-1", role: "professional", phone: "1", trades: ["plomeria"], coverage: ["Lanús"] }) as UserProfile,
+          ({
+            userId: "pro-1",
+            role: "professional",
+            phone: "1",
+            trades: ["plomeria"],
+            coverage: ["Lanús"],
+            photoPath: "profile-photos/pro-1.jpg",
+          }) as UserProfile,
         upsert: async () => undefined,
         setPhotoPath: async () => undefined,
       },
@@ -75,6 +82,27 @@ describe("GET /api/requests/[id]", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.location).not.toHaveProperty("exactAddress");
+  });
+
+  it("returns 403 for a professional with no profile photo, even if trade/coverage match", async () => {
+    const handler = createRequestGetHandler({
+      authenticate: async () => ({ id: "pro-1", role: "professional" }),
+      repository: {
+        listByCustomer: async () => [],
+        listOpen: async () => [openInLanus],
+        listByProfessional: async () => [],
+        get: async () => null,
+      },
+      profileRepository: {
+        get: async () =>
+          ({ userId: "pro-1", role: "professional", phone: "1", trades: ["plomeria"], coverage: ["Lanús"] }) as UserProfile,
+        upsert: async () => undefined,
+        setPhotoPath: async () => undefined,
+      },
+    });
+
+    const response = await handler(new Request("http://localhost/api/requests/request-1"), context());
+    expect(response.status).toBe(403);
   });
 
   it("lets the assigned professional view their own in-progress job without rechecking trade/coverage", async () => {
@@ -180,7 +208,14 @@ describe("GET /api/requests/[id]", () => {
       },
       profileRepository: {
         get: async () =>
-          ({ userId: "pro-1", role: "professional", phone: "1", trades: ["plomeria"], coverage: ["Lanús"] }) as UserProfile,
+          ({
+            userId: "pro-1",
+            role: "professional",
+            phone: "1",
+            trades: ["plomeria"],
+            coverage: ["Lanús"],
+            photoPath: "profile-photos/pro-1.jpg",
+          }) as UserProfile,
         upsert: async () => undefined,
         setPhotoPath: async () => undefined,
       },

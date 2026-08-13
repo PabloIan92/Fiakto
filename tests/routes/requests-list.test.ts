@@ -72,6 +72,7 @@ describe("GET /api/requests", () => {
           phone: "123456",
           trades: ["plomeria"],
           coverage: ["Lanús"],
+          photoPath: "profile-photos/actor-1.jpg",
         },
       }),
     );
@@ -80,6 +81,24 @@ describe("GET /api/requests", () => {
 
     expect(data.requests).toHaveLength(1);
     expect(data.requests[0].location).not.toHaveProperty("exactAddress");
+  });
+
+  it("hides open requests from a professional with no profile photo, even if trade/coverage match", async () => {
+    const handler = createRequestsGetHandler(
+      dependencies([openInLanus], {
+        "actor-1": {
+          userId: "actor-1",
+          role: "professional",
+          phone: "123456",
+          trades: ["plomeria"],
+          coverage: ["Lanús"],
+        },
+      }),
+    );
+    const response = await handler(requestWithRole("professional"));
+    const data = (await response.json()) as { requests: ServiceRequestWithId[] };
+
+    expect(data.requests).toHaveLength(0);
   });
 
   it("hides requests outside the professional's trades/coverage", async () => {
@@ -144,6 +163,7 @@ describe("GET /api/requests", () => {
           phone: "123456",
           trades: ["plomeria"],
           coverage: ["Lanús"],
+          photoPath: "profile-photos/actor-1.jpg",
         },
       }),
     );

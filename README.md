@@ -105,10 +105,10 @@ El repositorio contiene una vertical funcional en desarrollo. La base técnica, 
 - [x] ~~Comisión Fiakto, pago por transferencia, revelación condicional de dirección, disputas~~ — rescatado/reimplementado 2026-08-12, ver "Disputas y pagos" arriba.
 - [x] ~~`npx tsc --noEmit` con errores preexistentes en mocks de `ProfileRepository`~~ — arreglado 2026-08-12.
 - [x] ~~Race condition: `GET /api/requests` podía devolver 401 justo después del signup~~ — arreglado 2026-08-12 (era más serio de lo que parecía: la cookie de sesión podía no llegar a fijarse nunca, no solo tardar; ver `syncSessionUntilReady` en `src/client/session-sync.ts`).
-- [ ] Subir fotos/videos/audios de la solicitud a Cloud Storage antes de crear la solicitud (hoy el form valida pero envía `media: []`).
-- [ ] **Filtrado por proximidad real** (geohash/`geofirestore`) — hoy solo filtra por oficio/cobertura declarada, no distancia.
+- [x] ~~Subir fotos/videos/audios de la solicitud a Cloud Storage~~ — implementado 2026-08-13: el cliente pide signed URLs de escritura (`POST /api/requests/media`) y sube cada archivo directo a Storage antes de crear la solicitud (no embebido en el body, pueden pesar hasta 20MB), reemplazando el `media: []` que se mandaba siempre.
+- [x] ~~Enforcement real de "foto obligatoria" para profesional~~ — implementado 2026-08-13: `canProfessionalViewRequest` (`src/domain/quotes.ts`) ahora exige `hasPhoto`, no solo oficio/cobertura/verificado. Antes la UI la pedía pero nada bloqueaba aparecer en oportunidades ni mandar presupuestos sin ella; ahora un profesional sin foto queda afuera de `GET /api/requests`, `GET /api/requests/[id]` y `POST /api/requests/[id]/quotes` igual que si no matcheara oficio/cobertura.
+- [ ] **Filtrado por proximidad real** (geohash/`geofirestore`) — hoy solo filtra por oficio/cobertura declarada (texto libre), no distancia. **No encarado el 2026-08-13**: el profesional hoy no tiene ninguna coordenada guardada, solo una lista de localidades en texto libre (`coverage: string[]`) — para calcular distancia real primero hay que decidir cómo declara su zona (¿un punto+radio en el mapa, como el domicilio del cliente? ¿un polígono?) y migrar los perfiles existentes. Es un cambio de modelo de datos, no solo de query.
 - [ ] Identidad verificada del profesional (no se chequea al filtrar oportunidades).
-- [ ] Enforcement real de "foto obligatoria" para profesional (hoy es obligatoria en la UI pero nada bloquea aparecer en oportunidades sin ella).
 - [ ] Configurar Firebase Emulator Suite, o generar credenciales de Application Default Credentials, para poder probar `npm run dev` local sin depender de staging.
 - [ ] Pruebas Playwright end-to-end (hoy la cobertura es unitaria/Vitest).
 

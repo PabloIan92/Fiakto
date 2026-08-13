@@ -7,13 +7,13 @@ describe("private opportunity matching", () => {
     expect(
       canProfessionalViewRequest(
         { trade: "plomeria", province: "Buenos Aires", locality: "Lanús" },
-        { verified: true, trades: ["plomeria"], coverage: ["Lanús"] },
+        { verified: true, hasPhoto: true, trades: ["plomeria"], coverage: ["Lanús"] },
       ),
     ).toBe(true);
     expect(
       canProfessionalViewRequest(
         { trade: "gas", province: "Buenos Aires", locality: "Lanús" },
-        { verified: true, trades: ["plomeria"], coverage: ["Lanús"] },
+        { verified: true, hasPhoto: true, trades: ["plomeria"], coverage: ["Lanús"] },
       ),
     ).toBe(false);
   });
@@ -22,19 +22,28 @@ describe("private opportunity matching", () => {
     expect(
       canProfessionalViewRequest(
         { trade: "plomeria", province: "Buenos Aires", locality: "San Isidro" },
-        { verified: true, trades: ["plomeria"], coverage: [" san isidro "] },
+        { verified: true, hasPhoto: true, trades: ["plomeria"], coverage: [" san isidro "] },
       ),
     ).toBe(true);
     expect(
       canProfessionalViewRequest(
         { trade: "plomeria", province: "Córdoba", locality: "Córdoba" },
-        { verified: true, trades: ["plomeria"], coverage: ["CORDOBA"] },
+        { verified: true, hasPhoto: true, trades: ["plomeria"], coverage: ["CORDOBA"] },
       ),
     ).toBe(true);
     expect(
       canProfessionalViewRequest(
         { trade: "plomeria", province: "Buenos Aires", locality: "Lanús" },
-        { verified: true, trades: ["plomeria"], coverage: ["Lomas de Zamora"] },
+        { verified: true, hasPhoto: true, trades: ["plomeria"], coverage: ["Lomas de Zamora"] },
+      ),
+    ).toBe(false);
+  });
+
+  it("requires a profile photo, even if trade/coverage/verified all match", () => {
+    expect(
+      canProfessionalViewRequest(
+        { trade: "plomeria", province: "Buenos Aires", locality: "Lanús" },
+        { verified: true, hasPhoto: false, trades: ["plomeria"], coverage: ["Lanús"] },
       ),
     ).toBe(false);
   });

@@ -34,6 +34,7 @@ const matchingProfile: UserProfile = {
   phone: "123456",
   trades: ["plomeria"],
   coverage: ["Lanús"],
+  photoPath: "profile-photos/pro-1.jpg",
 };
 
 const validQuoteBody = {
@@ -112,6 +113,14 @@ describe("POST /api/requests/:id/quotes", () => {
     const { deps } = dependencies({
       profile: { ...matchingProfile, trades: ["electricidad"] },
     });
+    const response = await createQuotesPostHandler(deps)(postRequest(), context());
+    expect(response.status).toBe(403);
+  });
+
+  it("returns 403 for a professional with no profile photo, even if trade/coverage match", async () => {
+    const { photoPath, ...withoutPhoto } = matchingProfile;
+    void photoPath;
+    const { deps } = dependencies({ profile: withoutPhoto as UserProfile });
     const response = await createQuotesPostHandler(deps)(postRequest(), context());
     expect(response.status).toBe(403);
   });

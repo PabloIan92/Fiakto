@@ -102,6 +102,7 @@ export function createRequestsGetHandler(dependencies: GetDependencies) {
           },
           {
             verified: true,
+            hasPhoto: Boolean(profile?.photoPath),
             trades: profile?.trades ?? [],
             coverage: profile?.coverage ?? [],
           },

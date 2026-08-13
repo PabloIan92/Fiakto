@@ -21,6 +21,10 @@ type Professional = {
   verified: boolean;
   trades: string[];
   coverage: string[];
+  // La foto de perfil es obligatoria en la UI de /perfil, pero nada
+  // impedía aparecer en oportunidades o mandar presupuestos sin haberla
+  // subido nunca — esto lo hace un requisito real, no solo de formulario.
+  hasPhoto: boolean;
 };
 
 // La cobertura del profesional es texto libre ("San Isidro, Lanús...") sin
@@ -44,6 +48,7 @@ export function canProfessionalViewRequest(
   const requestLocality = normalizeLocality(request.locality);
   return (
     professional.verified &&
+    professional.hasPhoto &&
     professional.trades.includes(request.trade) &&
     professional.coverage.some((locality) => normalizeLocality(locality) === requestLocality)
   );

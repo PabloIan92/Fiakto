@@ -63,6 +63,7 @@ export function createRequestGetHandler(dependencies: Dependencies) {
             },
             {
               verified: true,
+              hasPhoto: Boolean(profile?.photoPath),
               trades: profile?.trades ?? [],
               coverage: profile?.coverage ?? [],
             },
