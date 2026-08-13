@@ -50,6 +50,6 @@ env:
       - RUNTIME
 
   - variable: TELEGRAM_CHAT_ID
-    value: ""
+    value: "1528791563"
     availability:
       - RUNTIME
