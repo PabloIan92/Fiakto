@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth, useRoleGuard } from "@/app/providers/AuthProvider";
 import { formatSlaStatus } from "@/app/components/sla-status";
 import { AppHeader } from "@/app/components/AppHeader";
 import { isAdult } from "@/src/domain/profile";
+import { requestNotificationPermission, showAppAlert } from "@/src/client/notify";
+
+const POLL_INTERVAL_MS = 20_000;
 
 type Opportunity = {
   id: string;
@@ -34,10 +37,19 @@ export default function OportunidadesPage() {
   const { ready } = useRoleGuard("professional", "/cliente/solicitudes");
   const [opportunities, setOpportunities] = useState<Opportunity[] | null>(null);
   const [blockedMinor, setBlockedMinor] = useState(false);
+  const [newAlert, setNewAlert] = useState<string | null>(null);
+  // IDs de oportunidades disponibles para presupuestar (open/quoted) en el
+  // último fetch, para detectar cuáles son nuevas en el próximo. null =
+  // todavía no hubo un primer fetch, para no alertar de golpe con todo lo
+  // que ya existía al entrar a la página.
+  const knownOpenIdsRef = useRef<Set<string> | null>(null);
 
   useEffect(() => {
     if (!ready || !user) return;
-    (async () => {
+    requestNotificationPermission();
+
+    async function load() {
+      if (!user) return;
       const token = await user.getIdToken();
       const [profileResponse, requestsResponse] = await Promise.all([
         fetch("/api/profile", { headers: { authorization: `Bearer ${token}` } }),
@@ -50,13 +62,32 @@ export default function OportunidadesPage() {
           return;
         }
       }
-      if (requestsResponse.ok) {
-        const data = (await requestsResponse.json()) as { requests: Opportunity[] };
-        setOpportunities(data.requests);
-      } else {
+      if (!requestsResponse.ok) {
         setOpportunities([]);
+        return;
       }
-    })();
+      const data = (await requestsResponse.json()) as { requests: Opportunity[] };
+      setOpportunities(data.requests);
+
+      const openNow = data.requests.filter((item) => item.status === "open" || item.status === "quoted");
+      const knownOpenIds = knownOpenIdsRef.current;
+      if (knownOpenIds) {
+        const freshlyOpened = openNow.filter((item) => !knownOpenIds.has(item.id));
+        if (freshlyOpened.length > 0) {
+          setNewAlert(
+            freshlyOpened.length === 1
+              ? `Nueva oportunidad: ${freshlyOpened[0].description}`
+              : `${freshlyOpened.length} oportunidades nuevas para presupuestar.`,
+          );
+          showAppAlert("Fiakto", "Hay una nueva oportunidad para presupuestar.");
+        }
+      }
+      knownOpenIdsRef.current = new Set(openNow.map((item) => item.id));
+    }
+
+    void load();
+    const interval = setInterval(load, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
     // `ready` faltaba de esta lista: si `user` queda seteado antes de que
     // `role` resuelva (ready todavía false), el efecto corre una vez, sale
     // temprano por el guard de arriba, y nunca se vuelve a ejecutar cuando
@@ -95,6 +126,18 @@ export default function OportunidadesPage() {
     <AppHeader />
     <main className="mx-auto max-w-3xl px-6 py-12">
       <h1 className="mb-6 text-2xl font-bold">Oportunidades y trabajos en curso</h1>
+
+      {newAlert && (
+        <div
+          role="alert"
+          className="mb-4 flex items-center justify-between gap-3 border border-[#dc4b2f] bg-[#dc4b2f]/10 px-4 py-3 text-sm font-semibold"
+        >
+          <span>{newAlert}</span>
+          <button type="button" onClick={() => setNewAlert(null)} className="font-bold underline">
+            Cerrar
+          </button>
+        </div>
+      )}
 
       {opportunities.length === 0 ? (
         <p className="text-[#777166]">

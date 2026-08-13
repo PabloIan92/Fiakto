@@ -36,7 +36,7 @@ type OwnQuote = {
 const OWN_QUOTE_MESSAGE: Record<OwnQuote["status"], string> = {
   pending: "Ya enviaste tu presupuesto. Esperando que el cliente decida.",
   accepted: "El cliente aceptó tu presupuesto.",
-  rejected: "El cliente eligió el presupuesto de otro profesional para este trabajo.",
+  rejected: "El cliente no avanzó con tu presupuesto para este trabajo.",
 };
 
 const CAN_QUOTE_STATUSES: OpportunityDetail["status"][] = ["open", "quoted"];

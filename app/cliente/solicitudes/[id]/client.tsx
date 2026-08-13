@@ -85,6 +85,8 @@ export default function SolicitudDetallePage() {
   const [status, setStatus] = useState<"loading" | "ok" | "not-found">("loading");
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectError, setRejectError] = useState<string | null>(null);
   const [receiptError, setReceiptError] = useState("");
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [reportReason, setReportReason] = useState("");
@@ -131,6 +133,23 @@ export default function SolicitudDetallePage() {
     setAcceptingId(null);
     if (!response.ok) {
       setAcceptError("No pudimos aceptar este presupuesto. Probá de nuevo.");
+      return;
+    }
+    setReloadIndex((n) => n + 1);
+  }
+
+  async function handleReject(quoteId: string) {
+    if (!user) return;
+    setRejectingId(quoteId);
+    setRejectError(null);
+    const token = await user.getIdToken();
+    const response = await fetch(`/api/requests/${params.id}/quotes/${quoteId}/reject`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    setRejectingId(null);
+    if (!response.ok) {
+      setRejectError("No pudimos rechazar este presupuesto. Probá de nuevo.");
       return;
     }
     setReloadIndex((n) => n + 1);
@@ -323,6 +342,11 @@ export default function SolicitudDetallePage() {
             {acceptError}
           </p>
         )}
+        {rejectError && (
+          <p role="alert" className="mb-4 text-sm font-semibold text-[#b52f1c]">
+            {rejectError}
+          </p>
+        )}
 
         {!quotes || quotes.length === 0 ? (
           <p className="text-[#777166]">Todavía no recibiste presupuestos para esta solicitud.</p>
@@ -366,6 +390,14 @@ export default function SolicitudDetallePage() {
                         className="w-full border border-[#181713] px-4 py-2 text-sm font-black transition hover:bg-[#181713]/5 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {acceptingId === quote.id ? "Aceptando…" : "Aceptar y transferir a Fiakto"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleReject(quote.id)}
+                        disabled={rejectingId === quote.id}
+                        className="w-full text-sm font-bold text-[#777166] underline transition hover:text-[#181713] disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2"
+                      >
+                        {rejectingId === quote.id ? "Rechazando…" : "Rechazar"}
                       </button>
                     </div>
                   )}

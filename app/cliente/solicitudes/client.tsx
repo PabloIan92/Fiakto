@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { useAuth, useRoleGuard } from "@/app/providers/AuthProvider";
 import { formatSlaStatus } from "@/app/components/sla-status";
 import { AppHeader } from "@/app/components/AppHeader";
+import { requestNotificationPermission, showAppAlert } from "@/src/client/notify";
+
+const POLL_INTERVAL_MS = 20_000;
 
 type RequestItem = {
   id: string;
@@ -55,10 +58,19 @@ export default function MisSolicitudesPage() {
   const [requests, setRequests] = useState<RequestItem[] | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [retryError, setRetryError] = useState<string | null>(null);
+  const [newAlert, setNewAlert] = useState<string | null>(null);
+  // Estado ("open"/"triaging"/etc.) por solicitud en el último fetch, para
+  // detectar quién pasó a "quoted" (recibió su primer presupuesto) en el
+  // próximo. null = todavía no hubo un primer fetch, para no alertar de
+  // golpe con solicitudes que ya estaban "quoted" al entrar a la página.
+  const lastStatusByIdRef = useRef<Map<string, RequestItem["status"]> | null>(null);
 
   useEffect(() => {
     if (!ready || !user) return;
+    requestNotificationPermission();
     void loadRequests(user);
+    const interval = setInterval(() => void loadRequests(user), POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
     // `ready` faltaba de esta lista: si `user` queda seteado antes de que
     // `role` resuelva (ready todavía false), el efecto corre una vez, sale
     // temprano por el guard de arriba, y nunca se vuelve a ejecutar cuando
@@ -71,12 +83,28 @@ export default function MisSolicitudesPage() {
     const response = await fetch("/api/requests", {
       headers: { authorization: `Bearer ${token}` },
     });
-    if (response.ok) {
-      const data = (await response.json()) as { requests: RequestItem[] };
-      setRequests(data.requests);
-    } else {
+    if (!response.ok) {
       setRequests([]);
+      return;
     }
+    const data = (await response.json()) as { requests: RequestItem[] };
+    setRequests(data.requests);
+
+    const lastStatusById = lastStatusByIdRef.current;
+    if (lastStatusById) {
+      const newlyQuoted = data.requests.filter(
+        (item) => item.status === "quoted" && lastStatusById.get(item.id) !== "quoted",
+      );
+      if (newlyQuoted.length > 0) {
+        setNewAlert(
+          newlyQuoted.length === 1
+            ? `Recibiste un presupuesto en "${newlyQuoted[0].description}".`
+            : `Recibiste presupuestos nuevos en ${newlyQuoted.length} solicitudes.`,
+        );
+        showAppAlert("Fiakto", "Recibiste un nuevo presupuesto.");
+      }
+    }
+    lastStatusByIdRef.current = new Map(data.requests.map((item) => [item.id, item.status]));
   }
 
   async function retryAnalysis(id: string) {
@@ -119,6 +147,18 @@ export default function MisSolicitudesPage() {
           Nueva solicitud
         </Link>
       </div>
+
+      {newAlert && (
+        <div
+          role="alert"
+          className="mb-4 flex items-center justify-between gap-3 border border-[#dc4b2f] bg-[#dc4b2f]/10 px-4 py-3 text-sm font-semibold"
+        >
+          <span>{newAlert}</span>
+          <button type="button" onClick={() => setNewAlert(null)} className="font-bold underline">
+            Cerrar
+          </button>
+        </div>
+      )}
 
       {retryError && (
         <p role="alert" className="mb-4 text-sm font-semibold text-[#b52f1c]">
