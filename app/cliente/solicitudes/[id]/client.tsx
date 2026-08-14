@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 
 import { useAuth, useRoleGuard } from "@/app/providers/AuthProvider";
 import { AppHeader } from "@/app/components/AppHeader";
+import { RequestChat } from "@/app/components/RequestChat";
 import { computeQuoteBreakdown } from "@/src/domain/quotes";
 
 // Leaflet toca `window` al importarse: solo puede correr en el cliente.
@@ -495,6 +496,8 @@ export default function SolicitudDetallePage() {
           </ul>
         )}
       </div>
+
+      {REPORTABLE_STATUSES.includes(request.status) && <RequestChat requestId={request.id} />}
     </main>
     </>
   );

@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { useAuth, useRoleGuard } from "@/app/providers/AuthProvider";
 import { formatSlaStatus } from "@/app/components/sla-status";
 import { AppHeader } from "@/app/components/AppHeader";
+import { RequestChat } from "@/app/components/RequestChat";
 
 // Leaflet toca `window` al importarse: solo puede correr en el cliente.
 const ApproximateMap = dynamic(
@@ -452,6 +453,10 @@ export default function OportunidadDetallePage() {
             </form>
           )}
         </div>
+      )}
+
+      {!assignedToSomeoneElse && REPORTABLE_STATUSES.includes(opportunity.status) && (
+        <RequestChat requestId={opportunity.id} />
       )}
     </main>
     </>
