@@ -2,16 +2,16 @@ Fiakto Five-Year Planning Model (USD),2027,2028,2029,2030,2031
 Completed jobs,500,2500,7500,20000,50000
 Average order value,120,125,130,135,140
 Gross job value,60000,312500,975000,2700000,7000000
-Platform fee rate,10%,10%,10%,10%,10%
-Transaction revenue,6000,31250,97500,270000,700000
+Platform fee rate,8%,8%,8%,8%,8%
+Transaction revenue,4800,25000,78000,216000,560000
 Professional subscribers,50,250,700,1600,3000
 Monthly subscription price,12,12,12,12,12
 Subscription revenue,7200,36000,100800,230400,432000
-Total revenue,13200,67250,198300,500400,1132000
+Total revenue,12000,61000,178800,446400,992000
 COGS rate,30%,28%,26%,24%,22%
-COGS,3960,18830,51558,120096,249040
-Gross profit,9240,48420,146742,380304,882960
+COGS,3600,17080,46488,107136,218240
+Gross profit,8400,43920,132312,339264,773760
 Operating expenses,50000,120000,250000,450000,750000
-Operating profit (loss),-40760,-71580,-103258,-69696,132960
+Operating profit (loss),-41600,-76080,-117688,-110736,23760
 
-Notes,"Planning hypotheses only; not audited forecasts. Current revenue, users, and paying users are zero. Break-even is modeled for 2031."
+Notes,"Planning hypotheses only; not audited forecasts. Current revenue, users, and paying users are zero. Break-even is modeled for 2031 (thin margin at these volumes; the model is sensitive to the 8% take rate)."
