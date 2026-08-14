@@ -139,6 +139,17 @@ Decisión de Pablo: no encarar proximidad por geohash (el filtrado por localidad
 
 Cuando el cliente sube el comprobante de transferencia (ver "Disputas y pagos" arriba — la subida y el panel admin de liquidación ya existen), Gemini tiene que verificar: (1) que sea realmente un comprobante y no otra cosa, (2) que la transferencia sea al alias/CBU correcto, (3) que la fecha sea del mismo día, (4) que el importe coincida con lo pedido, y confirmar automáticamente en vez de depender de que un admin lo mire a mano. **Ya no está bloqueada** (el flujo de presupuestos, el importe esperado y el alias ya existen) — quedó sin encarar en la sesión del 2026-08-12 por decisión explícita de priorizar el resto del backlog técnico primero. El alias real de Pablo (`fiakto`) ya está en `NEXT_PUBLIC_FIAKTO_PAYMENT_ALIAS` (no es secreto, se muestra en pantalla); si en el futuro se agrega un CBU, ese sí va a Secret Manager.
 
+### Submission Build with Gemini XPRIZE (deadline 17 ago 2026 13:00 PT)
+
+- [x] Repo en GitHub público (`PabloIan92/Fiakto`).
+- [x] Video demo grabado y subido a YouTube: https://youtu.be/3rmdccwtxWs (voz edge-tts en-US-AvaNeural, Ken Burns, música real con licencia CC-BY — "Deliberate Thought" de Kevin MacLeod, crédito en `demo/assets/CREDITS.md`). Descripción con timestamps/links lista en `demo/output/youtube-description.txt`, ya pegada en YouTube.
+- [x] Narrativa escrita del submission: `docs/demo/devpost-narrative.md` (~710 palabras, en inglés).
+- [x] Evidencia de producto y P&L: `Product_Evidence/` (README actualizado, `fiakto-pl-summary.md`, proyección a 5 años con la comisión real del 8% corregida).
+- [x] `/impacto` público con métricas agregadas reales en vivo (ver arriba).
+- [ ] **Pendiente, tarea de Pablo, no delegable**: conseguir clientes y profesionales reales (aunque sea un puñado) para tener tracción genuina antes de la fecha límite — todo lo de arriba documenta honestamente que hoy la única transacción real fue de prueba entre las 2 cuentas del propio fundador, no de mercado.
+- [ ] Pendiente: completar el formulario de Devpost con el link del video, la narrativa y el link al repo.
+- [ ] Opcional/no bloqueante: entidad legal constituida (razón social/CUIT) — el formulario la pide "si está disponible", hoy no existe.
+
 ### Después del MVP
 
 - [ ] Integrar verificación de identidad y controles contra abuso.
