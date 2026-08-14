@@ -345,6 +345,7 @@ export default function NewRequestPage() {
             <p aria-live="polite" className="mt-3 min-h-5 text-center text-xs font-semibold">
               {status === "done" && "Solicitud creada. Ya podemos analizarla."}
               {status === "error" && "No pudimos crearla. Revisá tu sesión e intentá nuevamente."}
+              {status === "idle" && !location && "Marcá tu ubicación en el mapa para poder enviar."}
             </p>
           </div>
         </form>

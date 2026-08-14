@@ -21,6 +21,9 @@ export default function Home() {
         <p className="mt-5 max-w-xl text-lg text-neutral-600 dark:text-neutral-300">
           Publicá lo que necesitás y recibí presupuestos privados de profesionales verificados.
         </p>
+        <Link href="/impacto" className="mt-6 w-fit text-sm font-bold underline">
+          Ver Fiakto en números →
+        </Link>
       </main>
     </div>
   );
