@@ -1,0 +1,25 @@
+Fiakto — a home-repair marketplace built on Gemini, live in production.
+
+A customer describes a problem with a photo and a sentence. Gemini classifies it in seconds (trade, risk, price range, confidence) — no templates, no fallback. Fiakto matches verified professionals automatically, runs private competing quotes with an automatic 8% commission, keeps customer and professional talking inside its own chat (redacting phone numbers/emails before they're even saved), and closes the loop with a photo, an approval, and a real rating.
+
+Built for the Build with Gemini XPRIZE hackathon.
+
+Live app: https://fiakto-staging--fiakto.us-central1.hosted.app
+Public impact page (live numbers): https://fiakto-staging--fiakto.us-central1.hosted.app/impacto
+Source code: https://github.com/PabloIan92/Fiakto
+
+Chapters:
+0:00 The problem
+0:10 Publish in under a minute
+0:23 Gemini classifies it, live
+0:45 Matched automatically
+0:56 Competing quotes, automated commission
+1:14 Talk inside Fiakto, not WhatsApp
+1:25 Proof of work, live ratings
+1:37 Fiakto
+
+Music: "Deliberate Thought" by Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+http://creativecommons.org/licenses/by/4.0/
+
+#GoogleAI #AI #GeminiAPI #Hackathon #XPRIZE
