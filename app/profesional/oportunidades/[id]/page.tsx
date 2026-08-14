@@ -27,6 +27,7 @@ type OpportunityDetail = {
   slaDeadline?: string;
   workStartedAt?: string;
   workCompletedAt?: string;
+  review?: { stars: number; comment?: string };
 };
 
 const COMPLETION_PHOTO_TYPES = ["image/jpeg", "image/png"];
@@ -414,7 +415,20 @@ export default function OportunidadDetallePage() {
         )}
 
         {opportunity.status === "closed" && !assignedToSomeoneElse && (
-          <p className="text-sm font-bold text-[#34745a]">El cliente aprobó el trabajo. Cerrado.</p>
+          <div>
+            <p className="text-sm font-bold text-[#34745a]">El cliente aprobó el trabajo. Cerrado.</p>
+            {opportunity.review && (
+              <div className="mt-2">
+                <p className="text-lg text-[#dc4b2f]" aria-label={`El cliente te calificó ${opportunity.review.stars} de 5 estrellas`}>
+                  {"★".repeat(opportunity.review.stars)}
+                  {"☆".repeat(5 - opportunity.review.stars)}
+                </p>
+                {opportunity.review.comment && (
+                  <p className="mt-1 text-sm text-[#777166]">{opportunity.review.comment}</p>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

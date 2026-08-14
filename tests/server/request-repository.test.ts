@@ -304,6 +304,18 @@ describe("FirestoreRequestRepository", () => {
     expect(firestore.updated[0]?.data.closedAt).toBeDefined();
   });
 
+  it("stores the customer's rating when closing the request", async () => {
+    const firestore = new FakeFirestore();
+    const repository = new FirestoreRequestRepository(firestore);
+    await repository.closeRequest("request-7", { stars: 5, comment: "Todo perfecto." });
+
+    expect(firestore.updated[0]).toMatchObject({
+      collection: "requests",
+      id: "request-7",
+      data: { status: "closed", review: { stars: 5, comment: "Todo perfecto." } },
+    });
+  });
+
   it("returns null from get() when the request doesn't exist", async () => {
     const firestore = new FakeFirestore();
     const repository = new FirestoreRequestRepository(firestore);

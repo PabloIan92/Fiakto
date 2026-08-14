@@ -109,11 +109,15 @@ export class FirestoreRequestRepository implements RequestRepository {
     });
   }
 
-  async closeRequest(id: string) {
-    await this.firestore.collection("requests").doc(id).update({
-      status: "closed",
-      closedAt: FieldValue.serverTimestamp(),
-    });
+  async closeRequest(id: string, review?: { stars: number; comment?: string }) {
+    await this.firestore
+      .collection("requests")
+      .doc(id)
+      .update({
+        status: "closed",
+        closedAt: FieldValue.serverTimestamp(),
+        ...(review ? { review } : {}),
+      });
   }
 
   async updateStatus(

@@ -12,6 +12,7 @@ type RequestDoc = {
   professionalId?: string;
   triage?: unknown;
   payment?: { method: "cash" | "transfer"; feeArs: number; amountArs: number };
+  review?: { stars: number; comment?: string };
 };
 
 type QuoteDoc = {
@@ -37,6 +38,9 @@ async function getMetrics() {
   let amountArs = 0;
   let cashJobs = 0;
   let transferJobs = 0;
+  let starsSum = 0;
+  let reviewCount = 0;
+  const testimonials: Array<{ stars: number; comment: string }> = [];
 
   for (const item of requests) {
     if (item.customerId) customers.add(item.customerId);
@@ -49,6 +53,13 @@ async function getMetrics() {
       amountArs += item.payment.amountArs ?? 0;
       if (item.payment.method === "cash") cashJobs += 1;
       if (item.payment.method === "transfer") transferJobs += 1;
+    }
+    if (item.review) {
+      reviewCount += 1;
+      starsSum += item.review.stars;
+      if (item.review.comment) {
+        testimonials.push({ stars: item.review.stars, comment: item.review.comment });
+      }
     }
   }
 
@@ -69,6 +80,9 @@ async function getMetrics() {
     transferJobs,
     uniqueCustomers: customers.size,
     uniqueProfessionalsQuoted: professionalsQuoted.size,
+    reviewCount,
+    averageStars: reviewCount > 0 ? starsSum / reviewCount : null,
+    testimonials,
   };
 }
 
@@ -113,6 +127,32 @@ export default async function ImpactoPage() {
           <Metric label="Trabajos pagados en efectivo" value={metrics.cashJobs} />
           <Metric label="Trabajos pagados por transferencia" value={metrics.transferJobs} />
         </div>
+
+        {metrics.reviewCount > 0 && (
+          <>
+            <h2 className="mb-4 mt-10 text-lg font-bold">Testimonios reales</h2>
+            <div className="mb-6 grid gap-4 sm:grid-cols-2">
+              <Metric label="Calificaciones recibidas" value={metrics.reviewCount} />
+              <Metric
+                label="Calificación promedio"
+                value={metrics.averageStars ? `${metrics.averageStars.toFixed(1)} / 5 ★` : "—"}
+              />
+            </div>
+            {metrics.testimonials.length > 0 && (
+              <ul className="flex flex-col gap-3">
+                {metrics.testimonials.map((testimonial, index) => (
+                  <li key={index} className="border border-[#181713]/15 bg-[#fffdf8] p-4">
+                    <p className="mb-1 text-[#dc4b2f]">
+                      {"★".repeat(testimonial.stars)}
+                      {"☆".repeat(5 - testimonial.stars)}
+                    </p>
+                    <p className="text-sm text-[#565249]">&ldquo;{testimonial.comment}&rdquo;</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
       </div>
     </main>
   );

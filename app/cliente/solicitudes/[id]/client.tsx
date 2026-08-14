@@ -41,6 +41,7 @@ type RequestDetail = {
   payoutStatus?: "pending" | "settled";
   paymentReceipt?: { storagePath: string; mimeType: string };
   completionMediaUrl?: string;
+  review?: { stars: number; comment?: string };
 };
 
 type Quote = {
@@ -99,6 +100,8 @@ export default function SolicitudDetallePage() {
   const [reportStatus, setReportStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [closing, setClosing] = useState(false);
   const [closeError, setCloseError] = useState("");
+  const [reviewStars, setReviewStars] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
   const [reloadIndex, setReloadIndex] = useState(0);
 
   useEffect(() => {
@@ -213,7 +216,10 @@ export default function SolicitudDetallePage() {
     const token = await user.getIdToken();
     const response = await fetch(`/api/requests/${params.id}/close`, {
       method: "POST",
-      headers: { authorization: `Bearer ${token}` },
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify(
+        reviewStars > 0 ? { review: { stars: reviewStars, comment: reviewComment || undefined } } : {},
+      ),
     });
     setClosing(false);
     if (!response.ok) {
@@ -364,6 +370,35 @@ export default function SolicitudDetallePage() {
               className="mb-3 max-h-80 w-full rounded-lg border border-[#181713]/10 object-contain"
             />
           )}
+
+          <p className="mb-1 text-sm font-bold">¿Cómo calificarías el trabajo? (opcional)</p>
+          <div role="radiogroup" aria-label="Calificación" className="mb-3 flex gap-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                role="radio"
+                aria-checked={reviewStars === star}
+                aria-label={`${star} estrella${star > 1 ? "s" : ""}`}
+                onClick={() => setReviewStars(star)}
+                className={`text-3xl leading-none ${star <= reviewStars ? "text-[#dc4b2f]" : "text-[#181713]/20"}`}
+              >
+                ★
+              </button>
+            ))}
+          </div>
+          {reviewStars > 0 && (
+            <textarea
+              aria-label="Comentario sobre el trabajo (opcional)"
+              value={reviewComment}
+              onChange={(event) => setReviewComment(event.target.value)}
+              maxLength={1000}
+              rows={2}
+              placeholder="Contanos cómo te fue (opcional)…"
+              className="mb-3 w-full resize-y border border-[#181713]/30 bg-transparent px-3 py-2 text-sm outline-none focus:border-[#dc4b2f]"
+            />
+          )}
+
           <button
             type="button"
             onClick={handleClose}
@@ -383,6 +418,15 @@ export default function SolicitudDetallePage() {
       {request.status === "closed" && (
         <div className="mt-8 border-t border-[#181713]/15 pt-6">
           <p className="text-sm font-bold text-[#34745a]">Trabajo aprobado. Solicitud cerrada.</p>
+          {request.review && (
+            <div className="mt-2">
+              <p className="text-lg text-[#dc4b2f]" aria-label={`Calificaste ${request.review.stars} de 5 estrellas`}>
+                {"★".repeat(request.review.stars)}
+                {"☆".repeat(5 - request.review.stars)}
+              </p>
+              {request.review.comment && <p className="mt-1 text-sm text-[#777166]">{request.review.comment}</p>}
+            </div>
+          )}
         </div>
       )}
 

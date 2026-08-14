@@ -42,6 +42,14 @@ export const PaymentReceiptSchema = z.object({
   mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
 });
 
+// El cliente califica al profesional al aprobar y cerrar (POST
+// /api/requests/[id]/close) — no hay calificación del profesional al
+// cliente todavía (bilateral queda para después del MVP).
+export const ReviewSchema = z.object({
+  stars: z.number().int().min(1).max(5),
+  comment: z.string().trim().max(1000).optional(),
+});
+
 export const ServiceRequestSchema = z.object({
   customerId: z.string().min(1),
   description: z.string().trim().min(20).max(2000),
@@ -78,6 +86,7 @@ export const ServiceRequestSchema = z.object({
   // que quedó bien). El cliente la revisa y aprueba con
   // POST /api/requests/[id]/close para recién ahí pasar a "closed".
   completionMedia: MediaSchema.optional(),
+  review: ReviewSchema.optional(),
 });
 
 export type ServiceRequest = z.infer<typeof ServiceRequestSchema>;

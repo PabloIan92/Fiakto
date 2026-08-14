@@ -1,6 +1,11 @@
+import { z } from "zod";
+
+import { ReviewSchema } from "@/src/domain/requests";
 import type { Actor } from "@/src/server/auth";
 import { appendAuditEvent } from "@/src/server/audit";
 import type { RequestRepository } from "@/src/server/repositories/request-repository";
+
+const CloseBodySchema = z.object({ review: ReviewSchema.optional() }).optional();
 
 type AuditEvent = Parameters<typeof appendAuditEvent>[0];
 type Context = { params: Promise<{ id: string }> };
@@ -36,14 +41,36 @@ export function createRequestCloseHandler(dependencies: Dependencies) {
       );
     }
 
-    await dependencies.repository.closeRequest(id);
+    // El body es opcional (cerrar sin calificar sigue siendo válido) — un
+    // POST sin body no tiene JSON parseable, así que solo se intenta
+    // parsear si efectivamente mandaron algo.
+    const rawBody = await request.text();
+    let review: { stars: number; comment?: string } | undefined;
+    if (rawBody) {
+      let parsedJson: unknown;
+      try {
+        parsedJson = JSON.parse(rawBody);
+      } catch {
+        return Response.json({ error: "Invalid JSON" }, { status: 400 });
+      }
+      const parsed = CloseBodySchema.safeParse(parsedJson);
+      if (!parsed.success) {
+        return Response.json(
+          { error: "Invalid review", issues: parsed.error.issues },
+          { status: 400 },
+        );
+      }
+      review = parsed.data?.review;
+    }
+
+    await dependencies.repository.closeRequest(id, review);
     await dependencies.appendAudit({
       actorId: actor.id,
       actorRole: "customer",
       action: "request.closed",
       entityType: "request",
       entityId: id,
-      metadata: { storagePath: found.completionMedia.storagePath },
+      metadata: { storagePath: found.completionMedia.storagePath, hasReview: Boolean(review) },
     });
 
     return Response.json({ status: "closed" });

@@ -24,9 +24,12 @@ function context() {
   return { params: Promise.resolve({ id: "request-1" }) };
 }
 
-function call(handler: ReturnType<typeof createRequestCloseHandler>) {
+function call(handler: ReturnType<typeof createRequestCloseHandler>, body?: unknown) {
   return handler(
-    new Request("http://localhost/api/requests/request-1/close", { method: "POST" }),
+    new Request("http://localhost/api/requests/request-1/close", {
+      method: "POST",
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }),
     context(),
   );
 }
@@ -36,7 +39,7 @@ function dependencies(options?: {
   actorId?: string;
   found?: ServiceRequestWithId | null;
 }) {
-  const closed: string[] = [];
+  const closed: Array<{ id: string; review?: { stars: number; comment?: string } }> = [];
   const audits: Array<Record<string, unknown>> = [];
   return {
     closed,
@@ -48,8 +51,8 @@ function dependencies(options?: {
       }),
       repository: {
         get: async () => (options?.found === undefined ? completedWithPhoto : options.found),
-        closeRequest: async (id: string) => {
-          closed.push(id);
+        closeRequest: async (id: string, review?: { stars: number; comment?: string }) => {
+          closed.push({ id, review });
         },
       },
       appendAudit: async (event: Record<string, unknown>) => {
@@ -90,12 +93,43 @@ describe("POST /api/requests/:id/close", () => {
     expect(response.status).toBe(400);
   });
 
-  it("closes the request and appends an audit event", async () => {
+  it("closes the request without a review when none is sent", async () => {
     const { deps, closed, audits } = dependencies();
     const response = await call(createRequestCloseHandler(deps));
 
     expect(response.status).toBe(200);
-    expect(closed).toEqual(["request-1"]);
-    expect(audits[0]).toMatchObject({ action: "request.closed", entityId: "request-1" });
+    expect(closed).toEqual([{ id: "request-1", review: undefined }]);
+    expect(audits[0]).toMatchObject({
+      action: "request.closed",
+      entityId: "request-1",
+      metadata: { hasReview: false },
+    });
+  });
+
+  it("closes the request with a star rating and comment", async () => {
+    const { deps, closed, audits } = dependencies();
+    const response = await call(createRequestCloseHandler(deps), {
+      review: { stars: 5, comment: "Excelente trabajo, muy prolijo." },
+    });
+
+    expect(response.status).toBe(200);
+    expect(closed).toEqual([
+      { id: "request-1", review: { stars: 5, comment: "Excelente trabajo, muy prolijo." } },
+    ]);
+    expect(audits[0]).toMatchObject({ metadata: { hasReview: true } });
+  });
+
+  it("closes the request with just a star rating, no comment", async () => {
+    const { deps, closed } = dependencies();
+    const response = await call(createRequestCloseHandler(deps), { review: { stars: 3 } });
+
+    expect(response.status).toBe(200);
+    expect(closed).toEqual([{ id: "request-1", review: { stars: 3, comment: undefined } }]);
+  });
+
+  it("returns 400 for a rating outside 1-5", async () => {
+    const { deps } = dependencies();
+    const response = await call(createRequestCloseHandler(deps), { review: { stars: 6 } });
+    expect(response.status).toBe(400);
   });
 });

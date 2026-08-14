@@ -28,8 +28,9 @@ export interface RequestRepository {
   ): Promise<void>;
   // El cliente revisa la foto de trabajo terminado y aprueba — recién ahí
   // se cierra de verdad. Separado de completeWork porque lo hacen actores
-  // distintos (profesional completa con evidencia, cliente cierra).
-  closeRequest(id: string): Promise<void>;
+  // distintos (profesional completa con evidencia, cliente cierra). La
+  // calificación es opcional: cerrar no depende de que el cliente puntúe.
+  closeRequest(id: string, review?: { stars: number; comment?: string }): Promise<void>;
   // Transición genérica de estado usada por el flujo de presupuestos:
   // "open" -> "quoted" al recibir el primer presupuesto, y "-> accepted"
   // (con el professionalId ganador) al aceptar uno.

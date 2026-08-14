@@ -122,6 +122,10 @@ Se probó el flujo completo con una cuenta nueva de verdad (email/password, crea
 
 **`/impacto` (2026-08-14)**: página pública (sin login) con métricas agregadas reales tomadas en vivo de Firestore — solicitudes publicadas, analizadas con Gemini, presupuestos enviados, trabajos aceptados/completados/cerrados, clientes y profesionales únicos, monto total transaccionado y comisión Fiakto generada. Pensada para que el jurado del concurso (o cualquiera sin cuenta) vea evidencia real sin necesitar login — nunca expone datos de una solicitud puntual (descripción, dirección, nombre), solo conteos y sumas. Linkeada desde la home pública.
 
+### Calificación del profesional al cerrar (2026-08-14)
+
+No había ninguna forma de dejar un comentario/calificación (Pablo lo notó preparando evidencia de testimonios reales para el concurso). `POST /api/requests/[id]/close` ahora acepta un `review` opcional (`{stars: 1-5, comment?}`) — el cliente elige estrellas + comentario opcional justo antes de aprobar y cerrar. El profesional lo ve en su propio detalle; `/impacto` muestra calificación promedio y lista los comentarios (sin nombre/contacto) como testimonios reales. No es calificación bilateral (el profesional no califica al cliente) — queda para después del MVP.
+
 ### Chat interno cliente↔profesional (2026-08-14)
 
 Decisión de Pablo: no encarar proximidad por geohash (el filtrado por localidad declarada ya alcanza, que el profesional juzgue la distancia él mismo) y en cambio construir un chat interno para que, una vez que hay match (presupuesto aceptado), cliente y profesional coordinen por Fiakto en vez de irse a hablar por afuera.
