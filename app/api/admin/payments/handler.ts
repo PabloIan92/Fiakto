@@ -38,6 +38,7 @@ export function createAdminPaymentsGetHandler(dependencies: Dependencies) {
           amountArs: item.payment?.amountArs ?? 0,
           hasReceipt: Boolean(item.paymentReceipt),
           ...(paymentReceiptUrl ? { paymentReceiptUrl } : {}),
+          ...(item.paymentReceiptVerdict ? { paymentReceiptVerdict: item.paymentReceiptVerdict } : {}),
         };
       }),
     );

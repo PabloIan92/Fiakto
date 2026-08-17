@@ -1,4 +1,4 @@
-import type { Location, ServiceRequest } from "@/src/domain/requests";
+import type { Location, PaymentReceiptVerdict, ServiceRequest } from "@/src/domain/requests";
 import type { TriageResult } from "@/src/domain/triage";
 
 export type ServiceRequestWithId = ServiceRequest & { id: string };
@@ -53,7 +53,12 @@ export interface RequestRepository {
   ): Promise<void>;
   submitPaymentReceipt(
     id: string,
-    receipt: { storagePath: string; mimeType: string },
+    receipt: {
+      storagePath: string;
+      mimeType: string;
+      verdict?: PaymentReceiptVerdict;
+      reviewedAt?: string;
+    },
   ): Promise<void>;
   listPendingPayouts(): Promise<ServiceRequestWithId[]>;
   settlePayout(id: string): Promise<void>;

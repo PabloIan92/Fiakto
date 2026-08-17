@@ -19,6 +19,7 @@ type AdminPayment = {
   amountArs: number;
   hasReceipt: boolean;
   paymentReceiptUrl?: string;
+  paymentReceiptVerdict?: { looksValid: boolean; reason: string };
 };
 
 export default function AdminPaymentsPage() {
@@ -118,20 +119,27 @@ export default function AdminPaymentsPage() {
                   {payment.feeArs.toLocaleString("es-AR")} · Total transferido: $
                   {payment.amountArs.toLocaleString("es-AR")}
                 </p>
-                {payment.hasReceipt ? (
-                  <a
-                    href={payment.paymentReceiptUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mb-3 inline-block text-sm font-bold underline"
-                  >
-                    Ver comprobante
-                  </a>
-                ) : (
-                  <p className="mb-3 text-sm font-semibold text-[#b52f1c]">
-                    El cliente todavía no subió el comprobante.
-                  </p>
-                )}
+                <div className="mb-3">
+                  {payment.hasReceipt ? (
+                    <a
+                      href={payment.paymentReceiptUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-block text-sm font-bold underline"
+                    >
+                      Ver comprobante
+                    </a>
+                  ) : (
+                    <p className="text-sm font-semibold text-[#b52f1c]">
+                      El cliente todavía no subió el comprobante.
+                    </p>
+                  )}
+                  {payment.paymentReceiptVerdict && !payment.paymentReceiptVerdict.looksValid && (
+                    <p className="mt-1 text-xs font-bold text-[#b45f06]">
+                      ⚠ Revisar a mano: {payment.paymentReceiptVerdict.reason}
+                    </p>
+                  )}
+                </div>
                 <div>
                   <button
                     type="button"

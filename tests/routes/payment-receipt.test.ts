@@ -32,12 +32,18 @@ function call(
   );
 }
 
-function dependencies(options?: { actorId?: string; found?: ServiceRequestWithId | null }) {
+function dependencies(options?: {
+  actorId?: string;
+  found?: ServiceRequestWithId | null;
+  verdict?: { looksValid: boolean; reason: string } | "throw";
+}) {
   const submitted: Array<{ id: string; receipt: Record<string, unknown> }> = [];
   const audits: Array<Record<string, unknown>> = [];
+  const verifyCalls: Array<Record<string, unknown>> = [];
   return {
     submitted,
     audits,
+    verifyCalls,
     deps: {
       authenticate: async () => ({ id: options?.actorId ?? "customer-1", role: "customer" as const }),
       repository: {
@@ -51,6 +57,15 @@ function dependencies(options?: { actorId?: string; found?: ServiceRequestWithId
       appendAudit: async (event: Record<string, unknown>) => {
         audits.push(event);
       },
+      receiptProvider: {
+        verify: async (input: Record<string, unknown>) => {
+          verifyCalls.push(input);
+          if (options?.verdict === "throw") throw new Error("Gemini down");
+          return options?.verdict ?? { looksValid: true, reason: "Coincide monto y alias." };
+        },
+      },
+      paymentAlias: () => "fiakto",
+      now: () => new Date("2026-08-16T12:00:00.000Z"),
     },
   };
 }
@@ -84,14 +99,36 @@ describe("POST /api/requests/:id/payment-receipt", () => {
     expect(response.status).toBe(400);
   });
 
-  it("uploads the receipt, stores it and appends an audit event", async () => {
-    const { deps, submitted, audits } = dependencies();
+  it("uploads the receipt, asks Gemini to review it against the expected amount/alias, stores the verdict and appends an audit event", async () => {
+    const { deps, submitted, audits, verifyCalls } = dependencies();
     const response = await call(createPaymentReceiptPostHandler(deps));
 
     expect(response.status).toBe(200);
+    expect(verifyCalls[0]).toMatchObject({
+      contentType: "image/jpeg",
+      expectedAmountArs: 27000,
+      expectedAlias: "fiakto",
+    });
     expect(submitted).toEqual([
-      { id: "request-1", receipt: { storagePath: "payment-receipts/request-1.jpg", mimeType: "image/jpeg" } },
+      {
+        id: "request-1",
+        receipt: {
+          storagePath: "payment-receipts/request-1.jpg",
+          mimeType: "image/jpeg",
+          verdict: { looksValid: true, reason: "Coincide monto y alias." },
+          reviewedAt: "2026-08-16T12:00:00.000Z",
+        },
+      },
     ]);
     expect(audits[0]).toMatchObject({ action: "payment_receipt.submitted", entityId: "request-1" });
+  });
+
+  it("still stores the receipt if Gemini's review fails — it's advisory only", async () => {
+    const { deps, submitted } = dependencies({ verdict: "throw" });
+    const response = await call(createPaymentReceiptPostHandler(deps));
+
+    expect(response.status).toBe(200);
+    expect(submitted[0].receipt).toMatchObject({ storagePath: "payment-receipts/request-1.jpg" });
+    expect(submitted[0].receipt.verdict).toBeUndefined();
   });
 });

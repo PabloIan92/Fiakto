@@ -1,6 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 
-import type { Location, ServiceRequest } from "@/src/domain/requests";
+import type { Location, PaymentReceiptVerdict, ServiceRequest } from "@/src/domain/requests";
 import type { TriageResult } from "@/src/domain/triage";
 import { db } from "@/src/server/firebase-admin";
 import type { RequestRepository } from "@/src/server/repositories/request-repository";
@@ -152,11 +152,22 @@ export class FirestoreRequestRepository implements RequestRepository {
       });
   }
 
-  async submitPaymentReceipt(id: string, receipt: { storagePath: string; mimeType: string }) {
-    await this.firestore.collection("requests").doc(id).update({
-      paymentReceipt: receipt,
+  async submitPaymentReceipt(
+    id: string,
+    receipt: {
+      storagePath: string;
+      mimeType: string;
+      verdict?: PaymentReceiptVerdict;
+      reviewedAt?: string;
+    },
+  ) {
+    const update: DocumentData = {
+      paymentReceipt: { storagePath: receipt.storagePath, mimeType: receipt.mimeType },
       paymentReceiptSubmittedAt: FieldValue.serverTimestamp(),
-    });
+    };
+    if (receipt.verdict !== undefined) update.paymentReceiptVerdict = receipt.verdict;
+    if (receipt.reviewedAt !== undefined) update.paymentReceiptReviewedAt = receipt.reviewedAt;
+    await this.firestore.collection("requests").doc(id).update(update);
   }
 
   async listPendingPayouts() {

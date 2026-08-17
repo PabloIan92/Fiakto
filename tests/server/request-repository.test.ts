@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ServiceRequest } from "@/src/domain/requests";
+import type { PaymentReceiptVerdict, ServiceRequest } from "@/src/domain/requests";
 import type { TriageResult } from "@/src/domain/triage";
 import type { RequestRepository } from "@/src/server/repositories/request-repository";
 import { FirestoreRequestRepository } from "@/src/server/repositories/firestore-request-repository";
@@ -111,7 +111,15 @@ class FakeRequestRepository implements RequestRepository {
     });
   }
 
-  async submitPaymentReceipt(id: string, receipt: { storagePath: string; mimeType: string }) {
+  async submitPaymentReceipt(
+    id: string,
+    receipt: {
+      storagePath: string;
+      mimeType: string;
+      verdict?: PaymentReceiptVerdict;
+      reviewedAt?: string;
+    },
+  ) {
     const stored = this.requests.get(id);
     if (!stored) throw new Error("Request not found");
     this.requests.set(id, {
@@ -411,6 +419,24 @@ describe("FirestoreRequestRepository", () => {
 
     expect(firestore.updated[0]?.data).toMatchObject({
       paymentReceipt: { storagePath: "payment-receipts/request-7.jpg", mimeType: "image/jpeg" },
+    });
+    expect(firestore.updated[0]?.data).not.toHaveProperty("paymentReceiptVerdict");
+  });
+
+  it("stores a submitted payment receipt along with Gemini's verdict", async () => {
+    const firestore = new FakeFirestore();
+    const repository = new FirestoreRequestRepository(firestore);
+    await repository.submitPaymentReceipt("request-7", {
+      storagePath: "payment-receipts/request-7.jpg",
+      mimeType: "image/jpeg",
+      verdict: { looksValid: false, reason: "El monto no coincide." },
+      reviewedAt: "2026-08-16T12:00:00.000Z",
+    });
+
+    expect(firestore.updated[0]?.data).toMatchObject({
+      paymentReceipt: { storagePath: "payment-receipts/request-7.jpg", mimeType: "image/jpeg" },
+      paymentReceiptVerdict: { looksValid: false, reason: "El monto no coincide." },
+      paymentReceiptReviewedAt: "2026-08-16T12:00:00.000Z",
     });
   });
 

@@ -1,6 +1,7 @@
 import type { Actor } from "@/src/server/auth";
 import { appendAuditEvent } from "@/src/server/audit";
 import type { RequestRepository } from "@/src/server/repositories/request-repository";
+import type { ReceiptProvider } from "@/src/server/ai/receipt-provider";
 
 type AuditEvent = Parameters<typeof appendAuditEvent>[0];
 type Context = { params: Promise<{ id: string }> };
@@ -10,6 +11,9 @@ export type Dependencies = {
   repository: Pick<RequestRepository, "get" | "submitPaymentReceipt">;
   upload(requestId: string, buffer: Buffer, contentType: string): Promise<string>;
   appendAudit(event: AuditEvent): Promise<unknown>;
+  receiptProvider: ReceiptProvider;
+  paymentAlias(): string;
+  now(): Date;
 };
 
 export function createPaymentReceiptPostHandler(dependencies: Dependencies) {
@@ -63,16 +67,38 @@ export function createPaymentReceiptPostHandler(dependencies: Dependencies) {
       );
     }
 
-    await dependencies.repository.submitPaymentReceipt(id, { storagePath, mimeType: contentType });
+    // La revision de Gemini es solo informativa: si falla o el resultado no
+    // valida, no bloquea que el comprobante quede subido — solo queda
+    // marcado para que un admin lo revise a mano en /admin/pagos.
+    let verdict: { looksValid: boolean; reason: string } | undefined;
+    let reviewedAt: string | undefined;
+    try {
+      verdict = await dependencies.receiptProvider.verify({
+        photoBase64,
+        contentType,
+        expectedAmountArs: found.payment?.amountArs ?? 0,
+        expectedAlias: dependencies.paymentAlias(),
+      });
+      reviewedAt = dependencies.now().toISOString();
+    } catch {
+      verdict = undefined;
+    }
+
+    await dependencies.repository.submitPaymentReceipt(id, {
+      storagePath,
+      mimeType: contentType,
+      verdict,
+      reviewedAt,
+    });
     await dependencies.appendAudit({
       actorId: actor.id,
       actorRole: "customer",
       action: "payment_receipt.submitted",
       entityType: "request",
       entityId: id,
-      metadata: { storagePath },
+      metadata: { storagePath, verdict },
     });
 
-    return Response.json({ status: "submitted" });
+    return Response.json({ status: "submitted", paymentReceiptVerdict: verdict });
   };
 }

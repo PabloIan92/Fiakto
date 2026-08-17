@@ -42,6 +42,16 @@ export const PaymentReceiptSchema = z.object({
   mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
 });
 
+// Revision de Gemini sobre el comprobante: puramente informativa. Nunca
+// bloquea que el cliente suba el comprobante ni ningun paso del flujo — si
+// falla o marca looksValid=false, el admin lo ve marcado para revisar a
+// mano en /admin/pagos, nada mas.
+export const PaymentReceiptVerdictSchema = z.object({
+  looksValid: z.boolean(),
+  reason: z.string().trim().min(1).max(300),
+});
+export type PaymentReceiptVerdict = z.infer<typeof PaymentReceiptVerdictSchema>;
+
 // El cliente califica al profesional al aprobar y cerrar (POST
 // /api/requests/[id]/close) — no hay calificación del profesional al
 // cliente todavía (bilateral queda para después del MVP).
@@ -81,6 +91,8 @@ export const ServiceRequestSchema = z.object({
   payment: PaymentSchema.optional(),
   payoutStatus: z.enum(["pending", "settled"]).optional(),
   paymentReceipt: PaymentReceiptSchema.optional(),
+  paymentReceiptVerdict: PaymentReceiptVerdictSchema.optional(),
+  paymentReceiptReviewedAt: z.string().datetime().optional(),
   // Foto del trabajo terminado que sube el profesional al completar (no el
   // cliente: él no hizo el trabajo, así que no puede ser quien certifica
   // que quedó bien). El cliente la revisa y aprueba con
