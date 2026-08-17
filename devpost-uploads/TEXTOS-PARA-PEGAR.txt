@@ -1,0 +1,30 @@
+========================================
+CAMPO 1: "How do you measure impact?"
+========================================
+
+Impact will be measured through the product's own request lifecycle rather than a separate analytics layer: number of requests successfully matched and completed, the payout amount released to the professional, and a 1-5 star customer review collected when a request is approved and closed. Comparing Gemini's structured trade/urgency classification against the customer's original free-text description also measures how much manual back-and-forth Gemini removes versus an unstructured referral. No live usage data exists yet, since the product has only been exercised by the founder during testing, not by real customers.
+
+
+========================================
+CAMPO 2: "Explain the expenses above."
+========================================
+
+No expenses were incurred during the Hackathon period. Development used a personal computer and internet connection already owned before the Hackathon, plus free or trial tiers of Firebase and Google Cloud services, so there was no new cash outlay attributable to this submission.
+
+
+========================================
+CAMPO 3: "Please explain the expenses associated with your COGS above."
+========================================
+
+There is no COGS because Fiakto has not delivered any paid service yet: no professional has completed a paying job through the platform during the Hackathon period, so there is no direct labor or materials cost to attribute to a sale.
+
+
+========================================
+ARCHIVOS A SUBIR (estan en Desktop\Fiakto\devpost-uploads)
+========================================
+
+"Upload a File"                          -> fiakto-pitch-deck.pdf
+"Upload evidence of the project running" -> fiakto-product-evidence.png
+"Upload your Profit evidence (P&L)"      -> fiakto-pl-summary.png
+
+Despues de subir los 3 archivos y pegar los 3 textos, apretar "Save & continue".
