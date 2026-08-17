@@ -13,6 +13,7 @@ export type Dependencies = {
   appendAudit(event: AuditEvent): Promise<unknown>;
   receiptProvider: ReceiptProvider;
   paymentAlias(): string;
+  paymentCbu(): string;
   now(): Date;
 };
 
@@ -78,6 +79,7 @@ export function createPaymentReceiptPostHandler(dependencies: Dependencies) {
         contentType,
         expectedAmountArs: found.payment?.amountArs ?? 0,
         expectedAlias: dependencies.paymentAlias(),
+        expectedCbu: dependencies.paymentCbu(),
       });
       reviewedAt = dependencies.now().toISOString();
     } catch {

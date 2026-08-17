@@ -14,5 +14,6 @@ export const POST = createPaymentReceiptPostHandler({
     verify: (input) => new GeminiReceiptProvider().verify(input),
   },
   paymentAlias: () => process.env.NEXT_PUBLIC_FIAKTO_PAYMENT_ALIAS ?? "",
+  paymentCbu: () => process.env.NEXT_PUBLIC_FIAKTO_PAYMENT_CBU ?? "",
   now: () => new Date(),
 });

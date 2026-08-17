@@ -65,6 +65,7 @@ function dependencies(options?: {
         },
       },
       paymentAlias: () => "fiakto",
+      paymentCbu: () => "3840200500000008745277",
       now: () => new Date("2026-08-16T12:00:00.000Z"),
     },
   };
@@ -108,6 +109,7 @@ describe("POST /api/requests/:id/payment-receipt", () => {
       contentType: "image/jpeg",
       expectedAmountArs: 27000,
       expectedAlias: "fiakto",
+      expectedCbu: "3840200500000008745277",
     });
     expect(submitted).toEqual([
       {
