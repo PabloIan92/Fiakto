@@ -57,7 +57,7 @@ env:
       - RUNTIME
 
   - variable: NEXT_PUBLIC_FIAKTO_PAYMENT_BANK
-    value: "Wilobank (vía Lemon)"
+    value: "Wilobank"
     availability:
       - BUILD
       - RUNTIME
