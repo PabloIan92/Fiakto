@@ -27,9 +27,19 @@ const STATUS_LABELS: Record<Opportunity["status"], string> = {
   // presupuestó, pero los presupuestos son privados: todavía se puede
   // competir) y los propios trabajos "accepted" (esperando iniciar).
   quoted: "Abierta, con presupuestos",
-  accepted: "Asignada a mí",
+  accepted: "¡Presupuesto aceptado!",
   in_progress: "En curso",
   completed: "Completada",
+};
+
+// "accepted" tiene que saltar a la vista frente al resto — es la señal más
+// importante que el profesional puede recibir acá (le ganó el trabajo).
+const STATUS_BADGE_STYLES: Record<Opportunity["status"], string> = {
+  open: "border border-[#181713]/20",
+  quoted: "border border-[#181713]/20",
+  accepted: "border border-[#34745a] bg-[#34745a] text-white",
+  in_progress: "border border-[#dc4b2f] bg-[#dc4b2f]/10 text-[#dc4b2f]",
+  completed: "border border-[#34745a] text-[#34745a]",
 };
 
 export default function OportunidadesPage() {
@@ -151,7 +161,12 @@ export default function OportunidadesPage() {
               ? formatSlaStatus(item.slaDeadline)
               : null;
             return (
-              <li key={item.id} className="rounded-lg border border-[#181713]/10 p-4">
+              <li
+                key={item.id}
+                className={`rounded-lg border p-4 ${
+                  item.status === "accepted" ? "border-[#34745a] bg-[#34745a]/5" : "border-[#181713]/10"
+                }`}
+              >
                 <a href={`/profesional/oportunidades/${item.id}`} className="flex flex-col gap-2">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm text-[#777166]">
@@ -159,7 +174,9 @@ export default function OportunidadesPage() {
                         ? `${item.location.locality}, ${item.location.province}`
                         : "Ubicación no disponible"}
                     </span>
-                    <span className="w-fit rounded-full border border-[#181713]/20 px-3 py-1 text-xs font-semibold">
+                    <span
+                      className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${STATUS_BADGE_STYLES[item.status]}`}
+                    >
                       {STATUS_LABELS[item.status]}
                     </span>
                   </div>
